@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../app/constants/app_colors.dart';
 import '../../../../app/constants/app_sizes.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
+import '../../../../core/bloc/list_bloc.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/app_avatar.dart';
@@ -24,7 +26,12 @@ class PortfolioListView extends StatelessWidget {
       emptyIcon: Icons.pie_chart_outline_rounded,
       skeletonHeight: 88,
       header: const Padding(
-        padding: EdgeInsets.fromLTRB(AppSizes.screenPadding, AppSizes.md, AppSizes.screenPadding, 0),
+        padding: EdgeInsets.fromLTRB(
+          AppSizes.screenPadding,
+          AppSizes.md,
+          AppSizes.screenPadding,
+          0,
+        ),
         child: _PortfolioSummary(),
       ),
       itemBuilder: (context, item, _) => _PortfolioTile(item: item),
@@ -36,45 +43,86 @@ class _PortfolioSummary extends StatelessWidget {
   const _PortfolioSummary();
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      color: AppColors.primary,
-      border: false,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Total Portfolio Value',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12)),
-                const SizedBox(height: 4),
-                Text(Formatters.compactCurrency(72200000),
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+    return BlocBuilder<ListBloc<PortfolioItem>, ListState<PortfolioItem>>(
+      builder: (context, state) {
+        final items = state.items;
+        final total = items.fold<double>(
+          0.0,
+          (sum, item) => sum + item.currentValue,
+        );
+        final avgRoi = items.isEmpty
+            ? 0.0
+            : (items.fold<double>(0.0, (sum, item) => sum + item.roi) /
+                  items.length);
+
+        return AppCard(
+          color: AppColors.primary,
+          border: false,
+          child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSizes.sm, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.trending_up_rounded, color: Colors.white, size: 14),
-                    SizedBox(width: 4),
-                    Text('+34% ROI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
+                    Text(
+                      'Total Portfolio Value',
+                      style: TextStyle(
+                        color: Colors.white.withAlpha(216),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      Formatters.compactCurrency(total),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ],
                 ),
               ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSizes.sm,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(51),
+                      borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          avgRoi >= 0
+                              ? Icons.trending_up_rounded
+                              : Icons.trending_down_rounded,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${avgRoi >= 0 ? '+' : ''}${avgRoi.toStringAsFixed(0)}% ROI',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -96,17 +144,28 @@ class _PortfolioTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(item.startupName, style: context.text.titleSmall),
-                Text('${item.equity.toStringAsFixed(0)}% equity · ${Formatters.date(item.investedAt)}',
-                    style: context.text.labelSmall),
+                Text(
+                  '${item.equity.toStringAsFixed(0)}% equity · ${Formatters.date(item.investedAt)}',
+                  style: context.text.labelSmall,
+                ),
               ],
             ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(Formatters.compactCurrency(item.currentValue), style: context.text.titleSmall),
-              Text('${positive ? '+' : ''}${item.roi.toStringAsFixed(0)}%',
-                  style: TextStyle(color: positive ? AppColors.success : AppColors.danger, fontSize: 12, fontWeight: FontWeight.w700)),
+              Text(
+                Formatters.compactCurrency(item.currentValue),
+                style: context.text.titleSmall,
+              ),
+              Text(
+                '${positive ? '+' : ''}${item.roi.toStringAsFixed(0)}%',
+                style: TextStyle(
+                  color: positive ? AppColors.success : AppColors.danger,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
         ],

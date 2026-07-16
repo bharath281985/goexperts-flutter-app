@@ -50,11 +50,29 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
     );
     if (!mounted) return;
     res.fold((f) => context.showSnack(f.message), (m) {
-      _name.text = m['name']?.toString() ?? '';
-      _company.text = m['company']?.toString() ?? '';
-      _location.text = m['location']?.toString() ?? '';
-      _bio.text = m['bio']?.toString() ?? '';
-      _verified = m['isVerified'] as bool? ?? false;
+      final user = m['user'] as Map<String, dynamic>? ?? {};
+      _name.text = m['name']?.toString() ?? user['fullName']?.toString() ?? '';
+      _company.text = m['company']?.toString() ?? m['firm']?.toString() ?? '';
+
+      final city = user['city']?.toString();
+      final country = user['country']?.toString();
+      String loc = m['location']?.toString() ?? '';
+      if (loc.isEmpty) {
+        if (city != null && country != null) {
+          loc = '$city, $country';
+        } else if (city != null) {
+          loc = city;
+        } else if (country != null) {
+          loc = country;
+        }
+      }
+      _location.text = loc;
+      _bio.text = m['bio']?.toString() ?? user['bio']?.toString() ?? '';
+      _verified =
+          m['isVerified'] as bool? ??
+          m['verified'] as bool? ??
+          user['verified'] as bool? ??
+          false;
     });
     setState(() => _loading = false);
   }
@@ -65,7 +83,9 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
       ApiEndpoints.investorProfile,
       body: {
         'name': _name.text.trim(),
+        'fullName': _name.text.trim(),
         'company': _company.text.trim(),
+        'firm': _company.text.trim(),
         'location': _location.text.trim(),
         'bio': _bio.text.trim(),
       },

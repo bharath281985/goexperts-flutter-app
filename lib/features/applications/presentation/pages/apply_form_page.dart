@@ -11,6 +11,10 @@ import '../../../../core/widgets/app_file_upload.dart';
 import '../../../../core/widgets/app_primary_button.dart';
 import '../../../../core/widgets/app_secondary_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/network/api_client_helper.dart';
+import '../../../../core/network/api_endpoints.dart';
+import '../../../projects/domain/repositories/project_repository.dart';
+import '../../../startup_ideas/domain/repositories/startup_repository.dart';
 import '../../../proposals/domain/repositories/proposal_repository.dart';
 
 /// A single reusable application form that adapts to the application [type].
@@ -188,6 +192,28 @@ class _ApplyFormPageState extends State<ApplyFormPage> {
       return;
     }
 
+    if (_isInvestment && widget.projectId != null) {
+      final api = sl<ApiClientHelper>();
+      final result = await api.postAction(
+        ApiEndpoints.investorExpressInterest,
+        body: {
+          'startupId': widget.projectId,
+          'amount': double.tryParse(_budget.text.trim()) ?? 0.0,
+          'message': _coverLetter.text.trim(),
+        },
+      );
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      result.fold(
+        (failure) => context.showSnack(failure.message, isError: true),
+        (_) {
+          context.showSnack('Investment application submitted successfully!');
+          Navigator.of(context).maybePop();
+        },
+      );
+      return;
+    }
+
     await Future<void>.delayed(const Duration(milliseconds: 700));
     if (!mounted) return;
     setState(() => _submitting = false);
@@ -241,11 +267,46 @@ class _ApplyFormPageState extends State<ApplyFormPage> {
         actions: [
           if (!_isEdit)
             TextButton(
-              onPressed: () {
-                context.showSnack('Draft saved');
-                Navigator.of(context).maybePop();
+              onPressed: () async {
+                if (widget.projectId == null) {
+                  context.showSnack('Draft saved');
+                  Navigator.of(context).maybePop();
+                  return;
+                }
+
+                final String targetId = widget.projectId!;
+                if (_isProject) {
+                  final res = await sl<ProjectRepository>().toggleSave(
+                    targetId,
+                  );
+                  if (!context.mounted) return;
+                  res.fold((f) => context.showSnack(f.message, isError: true), (
+                    success,
+                  ) {
+                    context.showSnack('Project saved successfully!');
+                    Navigator.of(context).maybePop();
+                  });
+                } else if (_isInvestment) {
+                  final res = await sl<StartupRepository>().toggleSave(
+                    targetId,
+                  );
+                  if (!context.mounted) return;
+                  res.fold((f) => context.showSnack(f.message, isError: true), (
+                    success,
+                  ) {
+                    context.showSnack('Startup saved successfully!');
+                    Navigator.of(context).maybePop();
+                  });
+                } else {
+                  context.showSnack('Draft saved');
+                  Navigator.of(context).maybePop();
+                }
               },
-              child: const Text('Save Draft'),
+              child: Text(
+                _isProject
+                    ? 'Save Project'
+                    : (_isInvestment ? 'Save Startup' : 'Save Draft'),
+              ),
             ),
         ],
       ),

@@ -18,7 +18,8 @@ class ChatSocketService {
 
   final _messageController = StreamController<Map<String, dynamic>>.broadcast();
   final _typingController = StreamController<Map<String, dynamic>>.broadcast();
-  final _presenceController = StreamController<Map<String, dynamic>>.broadcast();
+  final _presenceController =
+      StreamController<Map<String, dynamic>>.broadcast();
   final _statusController = StreamController<bool>.broadcast();
 
   Stream<Map<String, dynamic>> get messages => _messageController.stream;
@@ -41,7 +42,7 @@ class ChatSocketService {
       final socket = io.io(
         AppConfig.socketUrl,
         io.OptionBuilder()
-            .setTransports(['websocket'])
+            .setTransports(['websocket', 'polling'])
             .disableAutoConnect()
             .enableReconnection()
             .setReconnectionAttempts(12)
@@ -151,20 +152,14 @@ class ChatSocketService {
     _socket?.emit('conversation:leave', {'conversationId': conversationId});
   }
 
-  void emitTypingStart({
-    required String conversationId,
-    String? recipientId,
-  }) {
+  void emitTypingStart({required String conversationId, String? recipientId}) {
     _socket?.emit('typing:start', {
       'conversationId': conversationId,
       if (recipientId != null) 'recipientId': recipientId,
     });
   }
 
-  void emitTypingStop({
-    required String conversationId,
-    String? recipientId,
-  }) {
+  void emitTypingStop({required String conversationId, String? recipientId}) {
     _socket?.emit('typing:stop', {
       'conversationId': conversationId,
       if (recipientId != null) 'recipientId': recipientId,

@@ -55,12 +55,24 @@ class InvestorRepositoryImpl implements InvestorRepository {
     return _api.getEnvelope<Paginated<Deal>>(
       ApiEndpoints.investorInvestments,
       query: params.toApiQuery(),
-      parser: (env) => ApiResponse.parsePaginated(
-        env.data,
-        env.meta,
-        _dealFromJson,
-        fallbackPage: params.page,
-      ),
+      parser: (env) {
+        final rawData = env.data;
+        dynamic listRaw = rawData;
+        if (rawData is Map) {
+          listRaw =
+              rawData['deals'] ??
+              rawData['investments'] ??
+              rawData['items'] ??
+              rawData['data'] ??
+              rawData;
+        }
+        return ApiResponse.parsePaginated(
+          listRaw,
+          env.meta,
+          _dealFromJson,
+          fallbackPage: params.page,
+        );
+      },
     );
   }
 
@@ -72,12 +84,23 @@ class InvestorRepositoryImpl implements InvestorRepository {
     return _api.getEnvelope<Paginated<PortfolioItem>>(
       ApiEndpoints.investorPortfolio,
       query: params.toApiQuery(),
-      parser: (env) => ApiResponse.parsePaginated(
-        env.data,
-        env.meta,
-        _portfolioFromJson,
-        fallbackPage: params.page,
-      ),
+      parser: (env) {
+        final rawData = env.data;
+        dynamic listRaw = rawData;
+        if (rawData is Map) {
+          listRaw =
+              rawData['investments'] ??
+              rawData['items'] ??
+              rawData['data'] ??
+              rawData;
+        }
+        return ApiResponse.parsePaginated(
+          listRaw,
+          env.meta,
+          _portfolioFromJson,
+          fallbackPage: params.page,
+        );
+      },
     );
   }
 
@@ -146,17 +169,46 @@ class InvestorRepositoryImpl implements InvestorRepository {
     documentsCount: (json['documentsCount'] as num?)?.toInt() ?? 0,
   );
 
-  PortfolioItem _portfolioFromJson(Map<String, dynamic> json) => PortfolioItem(
-    id: json['id']?.toString() ?? '',
-    startupName: json['startupName'] as String? ?? 'Startup',
-    investedAmount: (json['investedAmount'] as num?)?.toDouble() ?? 0,
-    currentValue: (json['currentValue'] as num?)?.toDouble() ?? 0,
-    equity: (json['equity'] as num?)?.toDouble() ?? 0,
-    investedAt:
-        DateTime.tryParse(json['investedAt']?.toString() ?? '') ??
-        DateTime.now(),
-    logoUrl: json['logoUrl'] as String?,
-  );
+  PortfolioItem _portfolioFromJson(Map<String, dynamic> json) {
+    final startup = json['startup'] as Map?;
+    final startupProfile = json['startupProfile'] as Map?;
+    final startupName =
+        json['startupName'] as String? ??
+        startup?['name'] as String? ??
+        startupProfile?['startupName'] as String? ??
+        json['name'] as String? ??
+        'Startup';
+
+    final investedAmount =
+        (json['investedAmount'] as num?)?.toDouble() ??
+        (json['amount'] as num?)?.toDouble() ??
+        0.0;
+
+    final currentValue =
+        (json['currentValue'] as num?)?.toDouble() ??
+        (json['value'] as num?)?.toDouble() ??
+        (json['currentAmount'] as num?)?.toDouble() ??
+        investedAmount;
+
+    return PortfolioItem(
+      id: json['id']?.toString() ?? '',
+      startupName: startupName,
+      investedAmount: investedAmount,
+      currentValue: currentValue,
+      equity: (json['equity'] as num?)?.toDouble() ?? 0,
+      investedAt:
+          DateTime.tryParse(
+            json['investedAt']?.toString() ??
+                json['createdAt']?.toString() ??
+                '',
+          ) ??
+          DateTime.now(),
+      logoUrl:
+          json['logoUrl'] as String? ??
+          json['logo'] as String? ??
+          startup?['logoUrl'] as String?,
+    );
+  }
 
   Future<Result<T>> _apiNotConfigured<T>() async =>
       const Err(ServerFailure('Live API client is not configured.'));

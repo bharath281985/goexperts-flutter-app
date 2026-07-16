@@ -34,8 +34,18 @@ class MeetingRepositoryImpl implements MeetingRepository {
     final result = await _api.getEnvelope<List<Meeting>>(
       path,
       query: params.toApiQuery(),
-      parser: (envelope) =>
-          ApiResponse.parseList(envelope.data, _meetingFromJson),
+      parser: (envelope) {
+        final rawData = envelope.data;
+        dynamic listRaw = rawData;
+        if (rawData is Map) {
+          listRaw =
+              rawData['meetings'] ??
+              rawData['items'] ??
+              rawData['data'] ??
+              rawData;
+        }
+        return ApiResponse.parseList(listRaw, _meetingFromJson);
+      },
     );
 
     return result.fold(
@@ -95,18 +105,17 @@ class MeetingRepositoryImpl implements MeetingRepository {
         '${start.year.toString().padLeft(4, '0')}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')}';
     final time =
         '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
-    final withUserId =
-        meeting.participants.isNotEmpty ? meeting.participants.first : null;
+    final withUserId = meeting.participants.isNotEmpty
+        ? meeting.participants.first
+        : null;
 
     return _api.postAction(
       path,
       body: {
+        'founderId': withUserId,
         'date': date,
         'time': time,
-        'mode': meeting.isVideo ? 'video' : 'in_person',
-        if (withUserId != null) 'withUserId': withUserId,
-        'agenda': meeting.agenda,
-        'title': meeting.title,
+        'mode': meeting.isVideo ? 'Online' : 'Offline',
       },
     );
   }
@@ -128,6 +137,29 @@ class MeetingRepositoryImpl implements MeetingRepository {
         ? ApiEndpoints.founderMeetings
         : ApiEndpoints.meetings;
     return _api.patchAction('$base/$id/cancel');
+  }
+
+  @override
+  Future<Result<bool>> reschedule(String id, DateTime newStartTime) async {
+    if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
+    final role = await _tokenRoleHelper?.resolve();
+    final base = (role == UserRole.client)
+        ? ApiEndpoints.clientMeetings
+        : (role == UserRole.investor)
+        ? ApiEndpoints.investorMeetings
+        : (role == UserRole.founder)
+        ? ApiEndpoints.founderMeetings
+        : ApiEndpoints.meetings;
+
+    final date =
+        '${newStartTime.year.toString().padLeft(4, '0')}-${newStartTime.month.toString().padLeft(2, '0')}-${newStartTime.day.toString().padLeft(2, '0')}';
+    final time =
+        '${newStartTime.hour.toString().padLeft(2, '0')}:${newStartTime.minute.toString().padLeft(2, '0')}';
+
+    return _api.patchAction(
+      '$base/$id/reschedule',
+      body: {'date': date, 'time': time},
+    );
   }
 
   static Meeting _meetingFromJson(Map<String, dynamic> json) {

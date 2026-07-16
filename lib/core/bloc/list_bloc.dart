@@ -10,7 +10,8 @@ import '../utils/result.dart';
 /// It provides search, advanced filters, sorting, pagination, refresh and the
 /// full loading/success/empty/failure lifecycle out of the box — so concrete
 /// feature blocs (ProjectListBloc, StartupListBloc, …) are tiny wrappers.
-typedef ListFetcher<T> = Future<Result<Paginated<T>>> Function(QueryParams params);
+typedef ListFetcher<T> =
+    Future<Result<Paginated<T>>> Function(QueryParams params);
 
 // ----- Events -----
 sealed class ListEvent extends Equatable {
@@ -45,6 +46,14 @@ class ListFiltersChanged extends ListEvent {
   final bool? ascending;
   @override
   List<Object?> get props => [filters, sortBy, ascending];
+}
+
+class ListItemUpdated extends ListEvent {
+  const ListItemUpdated(this.item, this.matcher);
+  final dynamic item;
+  final bool Function(dynamic existing, dynamic updated) matcher;
+  @override
+  List<Object?> get props => [item];
 }
 
 // ----- State -----
@@ -91,18 +100,32 @@ class ListState<T> extends Equatable {
   }
 
   @override
-  List<Object?> get props => [status, items, query, hasMore, totalItems, errorMessage];
+  List<Object?> get props => [
+    status,
+    items,
+    query,
+    hasMore,
+    totalItems,
+    errorMessage,
+  ];
 }
 
 // ----- Bloc -----
 class ListBloc<T> extends Bloc<ListEvent, ListState<T>> {
   ListBloc({required this.fetcher, QueryParams? initialQuery})
-      : super(ListState<T>(query: initialQuery ?? const QueryParams())) {
+    : super(ListState<T>(query: initialQuery ?? const QueryParams())) {
     on<ListStarted>(_onStarted);
     on<ListRefreshed>(_onRefreshed);
     on<ListLoadMore>(_onLoadMore);
     on<ListSearchChanged>(_onSearchChanged);
     on<ListFiltersChanged>(_onFiltersChanged);
+    on<ListItemUpdated>((event, emit) {
+      if (event.item is! T) return;
+      final updatedList = state.items
+          .map((e) => event.matcher(e, event.item) ? event.item as T : e)
+          .toList();
+      emit(state.copyWith(items: updatedList));
+    });
   }
 
   final ListFetcher<T> fetcher;
@@ -116,33 +139,46 @@ class ListBloc<T> extends Bloc<ListEvent, ListState<T>> {
     emit(state.copyWith(status: loadingStatus, query: query));
     final result = await fetcher(query);
     result.fold(
-      (failure) => emit(state.copyWith(
-        status: ViewStatus.failure,
-        errorMessage: _messageFor(failure),
-      )),
+      (failure) => emit(
+        state.copyWith(
+          status: ViewStatus.failure,
+          errorMessage: _messageFor(failure),
+        ),
+      ),
       (page) {
         final items = append ? [...state.items, ...page.items] : page.items;
-        emit(state.copyWith(
-          status: items.isEmpty ? ViewStatus.empty : ViewStatus.success,
-          items: items,
-          hasMore: page.hasMore,
-          totalItems: page.totalItems,
-          query: query,
-        ));
+        emit(
+          state.copyWith(
+            status: items.isEmpty ? ViewStatus.empty : ViewStatus.success,
+            items: items,
+            hasMore: page.hasMore,
+            totalItems: page.totalItems,
+            query: query,
+          ),
+        );
       },
     );
   }
 
   Future<void> _onStarted(ListStarted event, Emitter<ListState<T>> emit) {
-    return _load(emit, query: state.query.copyWith(page: 1), loadingStatus: ViewStatus.loading);
+    return _load(
+      emit,
+      query: state.query.copyWith(page: 1),
+      loadingStatus: ViewStatus.loading,
+    );
   }
 
   Future<void> _onRefreshed(ListRefreshed event, Emitter<ListState<T>> emit) {
-    return _load(emit, query: state.query.copyWith(page: 1), loadingStatus: ViewStatus.refreshing);
+    return _load(
+      emit,
+      query: state.query.copyWith(page: 1),
+      loadingStatus: ViewStatus.refreshing,
+    );
   }
 
   Future<void> _onLoadMore(ListLoadMore event, Emitter<ListState<T>> emit) {
-    if (!state.hasMore || state.status == ViewStatus.loadingMore) return Future.value();
+    if (!state.hasMore || state.status == ViewStatus.loadingMore)
+      return Future.value();
     return _load(
       emit,
       query: state.query.copyWith(page: state.query.page + 1),
@@ -151,7 +187,10 @@ class ListBloc<T> extends Bloc<ListEvent, ListState<T>> {
     );
   }
 
-  Future<void> _onSearchChanged(ListSearchChanged event, Emitter<ListState<T>> emit) {
+  Future<void> _onSearchChanged(
+    ListSearchChanged event,
+    Emitter<ListState<T>> emit,
+  ) {
     return _load(
       emit,
       query: state.query.copyWith(search: event.query, page: 1),
@@ -159,7 +198,10 @@ class ListBloc<T> extends Bloc<ListEvent, ListState<T>> {
     );
   }
 
-  Future<void> _onFiltersChanged(ListFiltersChanged event, Emitter<ListState<T>> emit) {
+  Future<void> _onFiltersChanged(
+    ListFiltersChanged event,
+    Emitter<ListState<T>> emit,
+  ) {
     return _load(
       emit,
       query: state.query.copyWith(

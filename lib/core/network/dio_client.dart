@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import '../../app/config/app_config.dart';
 import '../auth/session_handler.dart';
 import '../storage/secure_storage.dart';
-import '../utils/logger.dart';
 import 'api_endpoints.dart';
 import 'app_error_messages.dart';
 import 'global_error_bus.dart';
@@ -74,6 +73,9 @@ class _AuthInterceptor extends Interceptor {
     RequestInterceptorHandler handler,
   ) async {
     final token = await _storage.accessToken;
+    print(
+      'DEBUG: API Hit - Request: ${options.method} ${options.path} - Token: $token',
+    );
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
@@ -238,19 +240,35 @@ class _GlobalErrorInterceptor extends Interceptor {
 class _LoggingInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    AppLogger.d('→ ${options.method} ${options.uri}');
+    print("--- Dio Request Log Start ---");
+    print("URI: ${options.uri}");
+    print("Method: ${options.method}");
+    print("Headers: ${options.headers}");
+    print("Query Parameters: ${options.queryParameters}");
+    print("Request Body: ${options.data}");
+    print("--- Dio Request Log End ---");
     handler.next(options);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    AppLogger.d('← ${response.statusCode} ${response.requestOptions.uri}');
+    print("--- Dio Response Log Start ---");
+    print("URI: ${response.requestOptions.uri}");
+    print("Status Code: ${response.statusCode}");
+    print("Response Headers: ${response.headers.map}");
+    print("Response Body: ${response.data}");
+    print("--- Dio Response Log End ---");
     handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    AppLogger.e('✗ ${err.requestOptions.uri}', err, err.stackTrace);
+    print("--- Dio Error Log Start ---");
+    print("URI: ${err.requestOptions.uri}");
+    print("Message: ${err.message}");
+    print("Status Code: ${err.response?.statusCode}");
+    print("Response Body: ${err.response?.data}");
+    print("--- Dio Error Log End ---");
     handler.next(err);
   }
 }

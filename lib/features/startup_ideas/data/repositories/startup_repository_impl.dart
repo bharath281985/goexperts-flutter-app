@@ -31,7 +31,7 @@ class StartupRepositoryImpl implements StartupRepository {
       parser: (env) => ApiResponse.parsePaginated(
         env.data,
         env.meta,
-        _fromJson,
+        Startup.fromApiJson,
         fallbackPage: params.page,
       ),
     );
@@ -46,7 +46,8 @@ class StartupRepositoryImpl implements StartupRepository {
         : '/startups/$id';
     return _api.get<Startup>(
       path,
-      parser: (raw) => _fromJson(Map<String, dynamic>.from(raw as Map)),
+      parser: (raw) =>
+          Startup.fromApiJson(Map<String, dynamic>.from(raw as Map)),
     );
   }
 
@@ -79,36 +80,6 @@ class StartupRepositoryImpl implements StartupRepository {
       body: {'startupId': id},
     );
   }
-
-  Startup _fromJson(Map<String, dynamic> json) => Startup(
-    id: json['id']?.toString() ?? '',
-    name: json['name'] as String? ?? 'Startup',
-    tagline: json['tagline'] as String? ?? '',
-    industry: json['industry'] as String? ?? 'General',
-    stage: json['stage'] as String? ?? 'MVP',
-    founderName: json['founderName'] as String? ?? 'Founder',
-    fundingRequired: (json['fundingRequired'] as num?)?.toDouble() ?? 0,
-    equityOffered: (json['equityOffered'] as num?)?.toDouble() ?? 0,
-    location: json['location'] as String? ?? 'N/A',
-    logoUrl: json['logoUrl'] as String?,
-    coverUrl: json['coverUrl'] as String?,
-    founderAvatar: json['founderAvatar'] as String?,
-    problem: json['problem'] as String? ?? '',
-    solution: json['solution'] as String? ?? '',
-    businessModel: json['businessModel'] as String? ?? '',
-    revenueModel: json['revenueModel'] as String? ?? '',
-    marketSize: json['marketSize'] as String? ?? '',
-    valuation: (json['valuation'] as num?)?.toDouble() ?? 0,
-    fundingRaised: (json['fundingRaised'] as num?)?.toDouble() ?? 0,
-    pitchDeckUrl: json['pitchDeckUrl'] as String?,
-    views: (json['views'] as num?)?.toInt() ?? 0,
-    investorInterests: (json['investorInterests'] as num?)?.toInt() ?? 0,
-    isSaved: json['isSaved'] as bool? ?? false,
-    isFollowing: json['isFollowing'] as bool? ?? false,
-    isVerified: json['isVerified'] as bool? ?? false,
-    tags:
-        (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? const [],
-  );
 
   Future<Result<T>> _apiNotConfigured<T>() async =>
       const Err(ServerFailure('Live API client is not configured.'));

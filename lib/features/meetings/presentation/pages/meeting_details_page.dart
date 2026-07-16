@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../app/constants/app_colors.dart';
 import '../../../../app/constants/app_sizes.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
@@ -15,57 +16,169 @@ import '../../../../core/widgets/app_status_chip.dart';
 import '../../domain/entities/meeting.dart';
 import '../../domain/repositories/meeting_repository.dart';
 
-/// Dedicated meeting details page (WebRTC / calendar ready).
-class MeetingDetailsPage extends StatelessWidget {
+import '../../../../core/utils/result.dart';
+import '../../../../core/utils/enums.dart';
+
+class MeetingDetailsPage extends StatefulWidget {
   const MeetingDetailsPage({super.key, required this.id});
   final String id;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Meeting Details'),
+  State<MeetingDetailsPage> createState() => _MeetingDetailsPageState();
+}
+
+class _MeetingDetailsPageState extends State<MeetingDetailsPage> {
+  late Future<Result<Meeting>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    _future = sl<MeetingRepository>().getMeeting(widget.id);
+  }
+
+  Future<void> _reschedule(Meeting meeting) async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: meeting.startTime,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (pickedDate == null || !mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(meeting.startTime),
+    );
+    if (pickedTime == null || !mounted) return;
+
+    final newStartTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    final res = await sl<MeetingRepository>().reschedule(
+      widget.id,
+      newStartTime,
+    );
+    if (!mounted) return;
+
+    res.fold((fail) => context.showSnack(fail.message, isError: true), (_) {
+      context.showSnack('Meeting rescheduled successfully!');
+      setState(() {
+        _load();
+      });
+    });
+  }
+
+  Future<void> _cancelMeeting() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Meeting'),
+        content: const Text('Are you sure you want to cancel this meeting?'),
         actions: [
-          IconButton(icon: const Icon(Icons.share_outlined), onPressed: () => context.showSnack('Invite link copied')),
-          IconButton(icon: const Icon(Icons.event_available_outlined), onPressed: () => context.showSnack('Added to calendar')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Yes, Cancel'),
+          ),
         ],
       ),
-      body: FutureBuilder(
-        future: sl<MeetingRepository>().getMeeting(id),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const AppLoadingShimmer(itemCount: 4, height: 110);
-          }
-          final meeting = snapshot.data?.valueOrNull;
-          if (meeting == null) return const AppErrorState();
-          return _content(context, meeting);
-        },
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSizes.lg),
-          child: Row(
-            children: [
-              Expanded(
-                child: AppSecondaryButton(
-                  label: 'Reschedule',
-                  icon: Icons.schedule_rounded,
-                  onPressed: () => context.showSnack('Reschedule requested'),
-                ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    final res = await sl<MeetingRepository>().cancel(widget.id);
+    if (!mounted) return;
+
+    res.fold((fail) => context.showSnack(fail.message, isError: true), (_) {
+      context.showSnack('Meeting cancelled successfully!');
+      context.pop();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Result<Meeting>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Meeting Details')),
+            body: const AppLoadingShimmer(itemCount: 4, height: 110),
+          );
+        }
+        final meeting = snapshot.data?.valueOrNull;
+        if (meeting == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Meeting Details')),
+            body: const AppErrorState(),
+          );
+        }
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Meeting Details'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.share_outlined),
+                onPressed: () => context.showSnack('Invite link copied'),
               ),
-              AppSizes.hGapMd,
-              Expanded(
-                flex: 2,
-                child: AppPrimaryButton(
-                  label: 'Join Meeting',
-                  icon: Icons.videocam_rounded,
-                  onPressed: () => context.showSnack('Joining… (WebRTC ready)'),
-                ),
+              IconButton(
+                icon: const Icon(Icons.event_available_outlined),
+                onPressed: () => context.showSnack('Added to calendar'),
               ),
+              if (meeting.status != EntityStatus.cancelled)
+                IconButton(
+                  icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+                  onPressed: _cancelMeeting,
+                ),
             ],
           ),
-        ),
-      ),
+          body: _content(context, meeting),
+          bottomNavigationBar: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSizes.lg),
+              child: Row(
+                children: [
+                  if (meeting.status != EntityStatus.cancelled) ...[
+                    Expanded(
+                      child: AppSecondaryButton(
+                        label: 'Reschedule',
+                        icon: Icons.schedule_rounded,
+                        onPressed: () => _reschedule(meeting),
+                      ),
+                    ),
+                    AppSizes.hGapMd,
+                  ],
+                  Expanded(
+                    flex: 2,
+                    child: AppPrimaryButton(
+                      label: meeting.status == EntityStatus.cancelled
+                          ? 'Cancelled'
+                          : 'Join Meeting',
+                      icon: Icons.videocam_rounded,
+                      onPressed: meeting.status == EntityStatus.cancelled
+                          ? null
+                          : () => context.showSnack('Joining… (WebRTC ready)'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -81,7 +194,10 @@ class MeetingDetailsPage extends StatelessWidget {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               ),
-              child: Icon(m.isVideo ? Icons.videocam_rounded : Icons.call_rounded, color: AppColors.primary),
+              child: Icon(
+                m.isVideo ? Icons.videocam_rounded : Icons.call_rounded,
+                color: AppColors.primary,
+              ),
             ),
             AppSizes.hGapMd,
             Expanded(
@@ -89,7 +205,10 @@ class MeetingDetailsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(m.title, style: context.text.titleMedium),
-                  Text(m.isVideo ? 'Video meeting' : 'Voice call', style: context.text.labelSmall),
+                  Text(
+                    m.isVideo ? 'Video meeting' : 'Voice call',
+                    style: context.text.labelSmall,
+                  ),
                 ],
               ),
             ),
@@ -100,10 +219,19 @@ class MeetingDetailsPage extends StatelessWidget {
         AppCard(
           child: Column(
             children: [
-              _row(context, Icons.event_outlined, 'Date', Formatters.date(m.startTime)),
+              _row(
+                context,
+                Icons.event_outlined,
+                'Date',
+                Formatters.date(m.startTime),
+              ),
               const Divider(height: AppSizes.lg),
-              _row(context, Icons.schedule_rounded, 'Time',
-                  '${Formatters.time(m.startTime)} – ${Formatters.time(m.endTime)} (${m.durationMinutes} min)'),
+              _row(
+                context,
+                Icons.schedule_rounded,
+                'Time',
+                '${Formatters.time(m.startTime)} – ${Formatters.time(m.endTime)} (${m.durationMinutes} min)',
+              ),
               const Divider(height: AppSizes.lg),
               _row(context, Icons.person_outline_rounded, 'With', m.withName),
             ],
@@ -116,7 +244,14 @@ class MeetingDetailsPage extends StatelessWidget {
             children: [
               const Icon(Icons.link_rounded, color: AppColors.info),
               AppSizes.hGapMd,
-              Expanded(child: Text(m.meetingLink, style: context.text.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Expanded(
+                child: Text(
+                  m.meetingLink,
+                  style: context.text.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               IconButton(
                 icon: const Icon(Icons.copy_rounded, size: 18),
                 onPressed: () => context.showSnack('Link copied'),
@@ -139,17 +274,29 @@ class MeetingDetailsPage extends StatelessWidget {
     );
   }
 
-  Widget _row(BuildContext context, IconData icon, String label, String value) => Row(
-        children: [
-          Icon(icon, size: 18, color: AppColors.mutedText),
-          AppSizes.hGapMd,
-          Text(label, style: context.text.labelMedium),
-          const Spacer(),
-          Flexible(child: Text(value, style: context.text.bodyMedium, textAlign: TextAlign.right)),
-        ],
-      );
+  Widget _row(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) => Row(
+    children: [
+      Icon(icon, size: 18, color: AppColors.mutedText),
+      AppSizes.hGapMd,
+      Text(label, style: context.text.labelMedium),
+      const Spacer(),
+      Flexible(
+        child: Text(
+          value,
+          style: context.text.bodyMedium,
+          textAlign: TextAlign.right,
+        ),
+      ),
+    ],
+  );
 
-  Widget _participant(BuildContext context, String name, String role) => Padding(
+  Widget _participant(BuildContext context, String name, String role) =>
+      Padding(
         padding: const EdgeInsets.only(bottom: AppSizes.sm),
         child: Row(
           children: [
