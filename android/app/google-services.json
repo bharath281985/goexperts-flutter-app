@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "817575811603",
+    "project_id": "goexperts-a979c",
+    "storage_bucket": "goexperts-a979c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:817575811603:android:b12759511ee75ba840bde6",
+        "android_client_info": {
+          "package_name": "com.doorstephub.goexperts"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "817575811603-m2jfe6l1lunbiunjvmlrilj7p6ig25kt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.doorstephub.goexperts",
+            "certificate_hash": "f0a12e52ccf3c51424f5336278bbd88e1413b75d"
+          }
+        },
+        {
+          "client_id": "817575811603-sjk8n64ib4a7mt6nrojjtgg5uhti6j0q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7odh9Q-Ib7536u52V6gyIAQXE9LC7xTM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "817575811603-sjk8n64ib4a7mt6nrojjtgg5uhti6j0q.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "817575811603-7pgbim1pbp6ps0h89594hnh9kouj2jgc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.doorstephub.goexperts"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
