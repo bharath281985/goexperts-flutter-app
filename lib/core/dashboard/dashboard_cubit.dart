@@ -31,6 +31,7 @@ class DashboardState extends Equatable {
     this.activeProjectsCount = 0,
     this.pendingProposalsCount = 0,
     this.monthlyEarnings = 0,
+    this.fundingGoal = 0,
     this.topSkills = const [],
     this.earningsChart = const [],
     this.unreadNotificationsCount = 0,
@@ -48,6 +49,7 @@ class DashboardState extends Equatable {
   final int activeProjectsCount;
   final int pendingProposalsCount;
   final double monthlyEarnings;
+  final double fundingGoal;
   final List<String> topSkills;
   final List<double> earningsChart;
   final int unreadNotificationsCount;
@@ -65,6 +67,7 @@ class DashboardState extends Equatable {
     int? activeProjectsCount,
     int? pendingProposalsCount,
     double? monthlyEarnings,
+    double? fundingGoal,
     List<String>? topSkills,
     List<double>? earningsChart,
     int? unreadNotificationsCount,
@@ -84,6 +87,7 @@ class DashboardState extends Equatable {
       pendingProposalsCount:
           pendingProposalsCount ?? this.pendingProposalsCount,
       monthlyEarnings: monthlyEarnings ?? this.monthlyEarnings,
+      fundingGoal: fundingGoal ?? this.fundingGoal,
       topSkills: topSkills ?? this.topSkills,
       earningsChart: earningsChart ?? this.earningsChart,
       unreadNotificationsCount:
@@ -105,6 +109,7 @@ class DashboardState extends Equatable {
     activeProjectsCount,
     pendingProposalsCount,
     monthlyEarnings,
+    fundingGoal,
     topSkills,
     earningsChart,
     unreadNotificationsCount,
@@ -363,24 +368,46 @@ class DashboardCubit extends Cubit<DashboardState> {
           final investorInterests =
               (data['investorInterests'] as num?)?.toInt() ?? 0;
           final pitchViews = (data['pitchDeckViews'] as num?)?.toInt() ?? 0;
-          final startupViews = (data['startupViews'] as num?)?.toInt() ?? 0;
-          final meetings = (data['meetingsCount'] as num?)?.toInt() ?? 0;
+          final startupViews =
+              (data['profileViews'] as num?)?.toInt() ??
+              (data['startupViews'] as num?)?.toInt() ??
+              0;
+          final meetings =
+              (data['pendingMeetings'] as num?)?.toInt() ??
+              (data['meetingsCount'] as num?)?.toInt() ??
+              0;
           final raised = (data['fundingRaised'] as num?)?.toDouble() ?? 0;
+          final goal = (data['fundingGoal'] as num?)?.toDouble() ?? 0;
           final fundingChart =
-              (data['charts']?['funding'] as List?)
+              (data['charts']?['funding'] as List? ??
+                      data['charts']?['fundingProgress'] as List?)
                   ?.map((e) => (e as num?)?.toDouble() ?? 0)
                   .toList() ??
               const <double>[];
+
+          final recommendedList =
+              data['widgets']?['recommendedInvestors'] as List?;
+          List<Investor>? investorsList;
+          if (recommendedList != null) {
+            investorsList = recommendedList.map((item) {
+              return Investor.fromApiJson(
+                Map<String, dynamic>.from(item as Map),
+              );
+            }).toList();
+          }
+
           next = next.copyWith(
             activeProjectsCount: investorInterests,
             pendingProposalsCount: pitchViews,
             profileCompletionPercent: startupViews,
             monthlyEarnings: raised,
+            fundingGoal: goal,
             topSkills: ['$meetings'],
             earningsChart: fundingChart,
             unreadNotificationsCount:
                 (data['unreadNotifications'] as num?)?.toInt() ?? 0,
             unreadMessagesCount: (data['unreadMessages'] as num?)?.toInt() ?? 0,
+            investors: investorsList ?? next.investors,
           );
         });
       }

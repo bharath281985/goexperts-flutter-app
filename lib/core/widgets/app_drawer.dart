@@ -409,7 +409,7 @@ class AppDrawer extends StatelessWidget {
             DrawerEntry(
               'My Startup',
               Icons.rocket_launch_outlined,
-              route: Routes.founderStartup,
+              route: Routes.founderListStartup,
             ),
             DrawerEntry(
               'Investors',

@@ -75,7 +75,9 @@ class ServiceLocator {
   T get<T extends Object>() {
     final obj = _singletons[T];
     if (obj == null) {
-      throw StateError('Service $T not registered. Did you call configureDependencies()?');
+      throw StateError(
+        'Service $T not registered. Did you call configureDependencies()?',
+      );
     }
     return obj as T;
   }
@@ -93,7 +95,11 @@ class ServiceLocator {
     final fileUploadHelper = FileUploadHelper(dioClient);
     final pushService = FirebasePushNotificationService();
     final deviceInfo = DeviceInfoHelper(localStorage, pushService);
-    final deviceTokenRegistration = DeviceTokenRegistrationService(apiClient, deviceInfo, pushService);
+    final deviceTokenRegistration = DeviceTokenRegistrationService(
+      apiClient,
+      deviceInfo,
+      pushService,
+    );
     final paymentCheckout = PaymentCheckoutService(apiClient);
     final chatSocket = ChatSocketService(secureStorage);
     final socialAuth = SocialAuthService();
@@ -120,46 +126,79 @@ class ServiceLocator {
     _register<DeviceInfoHelper>(deviceInfo);
     _register<TokenRoleHelper>(tokenRoleHelper);
 
-    final authRemote = AuthRemoteDatasource(apiClient, secureStorage, deviceInfo);
+    final authRemote = AuthRemoteDatasource(
+      apiClient,
+      secureStorage,
+      deviceInfo,
+    );
 
-    _register<AuthRepository>(AuthRepositoryImpl(
-      remote: authRemote,
-      secureStorage: secureStorage,
-      localStorage: localStorage,
-      socialAuth: socialAuth,
-      chatSocket: chatSocket,
-    ));
-    _register<ClientProposalRepository>(ClientProposalRepositoryImpl(
-      ClientProposalRemoteDatasource(apiClient),
-    ));
-    _register<ProjectRepository>(ProjectRepositoryImpl(apiClient, tokenRoleHelper));
+    _register<AuthRepository>(
+      AuthRepositoryImpl(
+        remote: authRemote,
+        secureStorage: secureStorage,
+        localStorage: localStorage,
+        socialAuth: socialAuth,
+        chatSocket: chatSocket,
+      ),
+    );
+    _register<ClientProposalRepository>(
+      ClientProposalRepositoryImpl(ClientProposalRemoteDatasource(apiClient)),
+    );
+    _register<ProjectRepository>(
+      ProjectRepositoryImpl(apiClient, tokenRoleHelper),
+    );
     _register<ProposalRepository>(ProposalRepositoryImpl(apiClient));
-    _register<FreelancerRepository>(FreelancerRepositoryImpl(apiClient, tokenRoleHelper));
+    _register<FreelancerRepository>(
+      FreelancerRepositoryImpl(apiClient, tokenRoleHelper),
+    );
     _register<FreelancerProfileRepository>(
       FreelancerProfileRepositoryImpl(apiClient, fileUploadHelper),
     );
     _register<FreelancerTaskRepository>(
       FreelancerTaskRepositoryImpl(apiClient, fileUploadHelper),
     );
-    _register<DocumentRepository>(DocumentRepositoryImpl(apiClient, fileUploadHelper));
+    _register<DocumentRepository>(
+      DocumentRepositoryImpl(apiClient, fileUploadHelper),
+    );
     _register<PortfolioRepository>(PortfolioRepositoryImpl(apiClient));
-    _register<CompanyRepository>(CompanyRepositoryImpl(apiClient, fileUploadHelper));
-    _register<StartupRepository>(StartupRepositoryImpl(apiClient, tokenRoleHelper));
-    _register<InvestorRepository>(InvestorRepositoryImpl(apiClient, tokenRoleHelper));
+    _register<CompanyRepository>(
+      CompanyRepositoryImpl(apiClient, fileUploadHelper),
+    );
+    _register<StartupRepository>(
+      StartupRepositoryImpl(apiClient, tokenRoleHelper),
+    );
+    _register<InvestorRepository>(
+      InvestorRepositoryImpl(apiClient, tokenRoleHelper),
+    );
     _register<FounderRepository>(FounderRepositoryImpl(apiClient));
     _register<MessageRepository>(
-      MessageRepositoryImpl(apiClient, tokenRoleHelper, fileUploadHelper, chatSocket),
+      MessageRepositoryImpl(
+        apiClient,
+        tokenRoleHelper,
+        fileUploadHelper,
+        chatSocket,
+      ),
     );
-    _register<MeetingRepository>(MeetingRepositoryImpl(apiClient, tokenRoleHelper));
-    _register<WalletRepository>(WalletRepositoryImpl(apiClient, tokenRoleHelper));
-    _register<SubscriptionRepository>(SubscriptionRepositoryImpl(apiClient, tokenRoleHelper));
+    _register<MeetingRepository>(
+      MeetingRepositoryImpl(apiClient, tokenRoleHelper),
+    );
+    _register<WalletRepository>(
+      WalletRepositoryImpl(apiClient, tokenRoleHelper),
+    );
+    _register<SubscriptionRepository>(
+      SubscriptionRepositoryImpl(apiClient, tokenRoleHelper),
+    );
     _register<NotificationRepository>(
       NotificationRepositoryImpl(apiClient, tokenRoleHelper),
     );
     _register<CatalogRepository>(CatalogRepositoryImpl(apiClient));
     _register<MasterDataRepository>(MasterDataRepositoryImpl());
-    _register<ReviewRepository>(ReviewRepositoryImpl(apiClient, tokenRoleHelper));
-    _register<SettingsRepository>(SettingsRepositoryImpl(apiClient));
+    _register<ReviewRepository>(
+      ReviewRepositoryImpl(apiClient, tokenRoleHelper),
+    );
+    _register<SettingsRepository>(
+      SettingsRepositoryImpl(apiClient, tokenRoleHelper),
+    );
   }
 }
 

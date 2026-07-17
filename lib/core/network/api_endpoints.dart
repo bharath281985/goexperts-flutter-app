@@ -265,6 +265,8 @@ class ApiEndpoints {
   static String investorInvestment(String id) => '/investor/investments/$id';
   static const investorExpressInterest =
       '/investor/investments/express-interest';
+  static String investorCancelInvestment(String id) =>
+      '/investor/investments/$id/cancel';
   static const investorOffer = '/investor/investments/offer';
   static String investorInvestmentStatus(String id) =>
       '/investor/investments/$id/status';
@@ -285,9 +287,10 @@ class ApiEndpoints {
   static const investorAnalytics = '/investor/analytics';
 
   // ── Founder ───────────────────────────────────────────────────────────────
+  static const founderIdeas = '/founder/ideas';
   static const founderDashboard = '/founder/dashboard';
   // Founder personal profile uses the startup profile endpoints on the API.
-  static const founderProfile = '/founder/startup';
+  static const founderProfile = '/founder/profile';
   static const founderStartup = '/founder/startup';
   static const founderFunding = '/founder/funding';
   static String founderFundingById(String id) => '/founder/funding/$id';

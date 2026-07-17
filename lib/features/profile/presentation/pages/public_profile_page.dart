@@ -45,13 +45,27 @@ class PublicProfilePage extends StatelessWidget {
         final f = r.valueOrNull;
         if (f == null) return null;
         return ProfileViewData(
-          name: f.name, headline: f.headline, location: f.location, avatarUrl: f.avatarUrl,
-          isVerified: f.isVerified, about: f.bio, rating: f.rating, reviewsCount: f.reviewsCount,
-          followers: f.followers, skills: f.skills,
-          isFollowing: FollowManager.instance.isFollowing(FollowManager.categoryFreelancers, f.id),
-          isSaved: BookmarkManager.instance.isBookmarked(BookmarkManager.categoryFreelancers, f.id),
+          name: f.name,
+          headline: f.headline,
+          location: f.location,
+          avatarUrl: f.avatarUrl,
+          isVerified: f.isVerified,
+          about: f.bio,
+          rating: f.rating,
+          reviewsCount: f.reviewsCount,
+          followers: f.followers,
+          skills: f.skills,
+          isFollowing: FollowManager.instance.isFollowing(
+            FollowManager.categoryFreelancers,
+            f.id,
+          ),
+          isSaved: BookmarkManager.instance.isBookmarked(
+            BookmarkManager.categoryFreelancers,
+            f.id,
+          ),
           type: PublicProfileType.freelancer,
-          primaryActionLabel: 'Hire Now', primaryActionIcon: Icons.handshake_outlined,
+          primaryActionLabel: 'Hire Now',
+          primaryActionIcon: Icons.handshake_outlined,
           stats: {
             'Projects': '${f.completedProjects}',
             'Success': '${f.successRate}%',
@@ -63,25 +77,53 @@ class PublicProfilePage extends StatelessWidget {
         final c = r.valueOrNull;
         if (c == null) return null;
         return ProfileViewData(
-          name: c.name, headline: '${c.industry} · ${c.teamSize} employees', location: c.location,
-          avatarUrl: c.logoUrl, isVerified: c.isVerified, about: c.description, rating: c.rating,
-          isFollowing: FollowManager.instance.isFollowing(FollowManager.categoryCompanies, c.id),
-          isSaved: BookmarkManager.instance.isBookmarked(BookmarkManager.categoryCompanies, c.id),
+          name: c.name,
+          headline: '${c.industry} · ${c.teamSize} employees',
+          location: c.location,
+          avatarUrl: c.logoUrl,
+          isVerified: c.isVerified,
+          about: c.description,
+          rating: c.rating,
+          isFollowing: FollowManager.instance.isFollowing(
+            FollowManager.categoryCompanies,
+            c.id,
+          ),
+          isSaved: BookmarkManager.instance.isBookmarked(
+            BookmarkManager.categoryCompanies,
+            c.id,
+          ),
           type: PublicProfileType.company,
-          primaryActionLabel: 'Follow', primaryActionIcon: Icons.person_add_alt_1_outlined,
-          stats: {'Projects': '${c.projectsPosted}', 'Hires': '${c.hiresCount}', 'Owner': c.ownerName.split(' ').first},
+          primaryActionLabel: 'Follow',
+          primaryActionIcon: Icons.person_add_alt_1_outlined,
+          stats: {
+            'Projects': '${c.projectsPosted}',
+            'Hires': '${c.hiresCount}',
+            'Owner': c.ownerName.split(' ').first,
+          },
         );
       case PublicProfileType.investor:
         final r = await sl<InvestorRepository>().getInvestor(id);
         final i = r.valueOrNull;
         if (i == null) return null;
         return ProfileViewData(
-          name: i.name, headline: '${i.investorType} · ${i.company}', location: i.location,
-          avatarUrl: i.avatarUrl, isVerified: i.isVerified, about: i.bio, skills: i.interestedIndustries,
-          isFollowing: FollowManager.instance.isFollowing(FollowManager.categoryInvestors, i.id),
-          isSaved: BookmarkManager.instance.isBookmarked(BookmarkManager.categoryInvestors, i.id),
+          name: i.name,
+          headline: '${i.investorType} · ${i.company}',
+          location: i.location,
+          avatarUrl: i.avatarUrl,
+          isVerified: i.isVerified,
+          about: i.bio,
+          skills: i.interestedIndustries,
+          isFollowing: FollowManager.instance.isFollowing(
+            FollowManager.categoryInvestors,
+            i.id,
+          ),
+          isSaved: BookmarkManager.instance.isBookmarked(
+            BookmarkManager.categoryInvestors,
+            i.id,
+          ),
           type: PublicProfileType.investor,
-          primaryActionLabel: 'Connect', primaryActionIcon: Icons.handshake_outlined,
+          primaryActionLabel: 'Connect',
+          primaryActionIcon: Icons.handshake_outlined,
           stats: {
             'Deals': '${i.dealsCount}',
             'Portfolio': '${i.portfolioCount}',
@@ -93,14 +135,30 @@ class PublicProfilePage extends StatelessWidget {
         final f = r.valueOrNull;
         if (f == null) return null;
         return ProfileViewData(
-          name: f.name, headline: '${f.founderType} · ${f.startupName}', location: f.location,
-          avatarUrl: f.avatarUrl, isVerified: f.isVerified, about: f.bio, skills: f.skills,
+          name: f.name,
+          headline: '${f.founderType} · ${f.startupName}',
+          location: f.location,
+          avatarUrl: f.avatarUrl,
+          isVerified: f.isVerified,
+          about: f.bio,
+          skills: f.skills,
           followers: f.followers,
-          isFollowing: FollowManager.instance.isFollowing(FollowManager.categoryFounders, f.id),
-          isSaved: BookmarkManager.instance.isBookmarked(BookmarkManager.categoryFounders, f.id),
+          isFollowing: FollowManager.instance.isFollowing(
+            FollowManager.categoryFounders,
+            f.id,
+          ),
+          isSaved: BookmarkManager.instance.isBookmarked(
+            BookmarkManager.categoryFounders,
+            f.id,
+          ),
           type: PublicProfileType.founder,
-          primaryActionLabel: 'Invest', primaryActionIcon: Icons.trending_up_rounded,
-          stats: {'Followers': '${f.followers}', 'Experience': '${f.experienceYears}y', 'Startup': f.startupName},
+          primaryActionLabel: 'Invest',
+          primaryActionIcon: Icons.trending_up_rounded,
+          stats: {
+            'Followers': '${f.followers}',
+            'Experience': '${f.experienceYears}y',
+            'Startup': f.startupName,
+          },
         );
     }
   }
@@ -108,7 +166,10 @@ class PublicProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: Listenable.merge([BookmarkManager.instance, FollowManager.instance]),
+      listenable: Listenable.merge([
+        BookmarkManager.instance,
+        FollowManager.instance,
+      ]),
       builder: (context, _) {
         return Scaffold(
           appBar: AppBar(title: const Text('Profile')),
@@ -122,11 +183,25 @@ class PublicProfilePage extends StatelessWidget {
               if (data == null) return const AppErrorState();
               return ProfileView(
                 data: data,
-                reviews: type == PublicProfileType.freelancer ? MockData.reviews : const [],
-                onPrimaryAction: () => context.showSnack('${data.primaryActionLabel} · ${data.name}'),
-                onMessage: () => context.push('${Routes.chat}/pub_$id'),
-                onFollow: () => FollowManager.instance.toggleFollow(_category, id),
-                onBookmark: () => BookmarkManager.instance.toggle(_category, id),
+                reviews: type == PublicProfileType.freelancer
+                    ? MockData.reviews
+                    : const [],
+                onPrimaryAction: () => context.showSnack(
+                  '${data.primaryActionLabel} · ${data.name}',
+                ),
+                onMessage: () {
+                  final nameEncoded = Uri.encodeComponent(data.name);
+                  final avatarEncoded = Uri.encodeComponent(
+                    data.avatarUrl ?? '',
+                  );
+                  context.push(
+                    '${Routes.chat}/$id?name=$nameEncoded&avatarUrl=$avatarEncoded',
+                  );
+                },
+                onFollow: () =>
+                    FollowManager.instance.toggleFollow(_category, id),
+                onBookmark: () =>
+                    BookmarkManager.instance.toggle(_category, id),
               );
             },
           ),

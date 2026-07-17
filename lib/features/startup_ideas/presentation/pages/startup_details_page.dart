@@ -28,6 +28,8 @@ class StartupDetailsPage extends StatefulWidget {
 
 class _StartupDetailsPageState extends State<StartupDetailsPage> {
   late final Future<Result<Startup>> _future;
+  bool? _hasInvestedOverride;
+  bool _isLoadingAction = false;
 
   @override
   void initState() {
@@ -96,9 +98,23 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                             print("founderId: ${s.founderId}");
                             if (s.founderId != null &&
                                 s.founderId!.isNotEmpty) {
-                              context.push('${Routes.chat}/${s.founderId}');
+                              final nameEncoded = Uri.encodeComponent(
+                                s.founderName,
+                              );
+                              final avatarEncoded = Uri.encodeComponent(
+                                s.founderAvatar ?? '',
+                              );
+                              context.push(
+                                '${Routes.chat}/${s.founderId}?name=$nameEncoded&avatarUrl=$avatarEncoded',
+                              );
                             } else {
-                              context.push('${Routes.chat}/su_${widget.id}');
+                              final nameEncoded = Uri.encodeComponent(s.name);
+                              final avatarEncoded = Uri.encodeComponent(
+                                s.logoUrl ?? '',
+                              );
+                              context.push(
+                                '${Routes.chat}/su_${widget.id}?name=$nameEncoded&avatarUrl=$avatarEncoded',
+                              );
                             }
                           },
                         ),
@@ -107,12 +123,76 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                       Expanded(
                         flex: 2,
                         child: AppPrimaryButton(
-                          label: 'Invest / Express Interest',
-                          icon: Icons.trending_up_rounded,
-                          onPressed: () {
-                            context.push(
-                              '${Routes.apply}?type=Investment&name=${Uri.encodeComponent(s.name)}&projectId=${s.id}',
-                            );
+                          label: (_hasInvestedOverride ?? s.hasInvested)
+                              ? 'Withdraw Interest'
+                              : 'Invest / Express Interest',
+                          icon: (_hasInvestedOverride ?? s.hasInvested)
+                              ? Icons.cancel_outlined
+                              : Icons.trending_up_rounded,
+                          isLoading: _isLoadingAction,
+                          backgroundColor:
+                              (_hasInvestedOverride ?? s.hasInvested)
+                              ? AppColors.danger
+                              : AppColors.primary,
+                          onPressed: () async {
+                            if (_hasInvestedOverride ?? s.hasInvested) {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Withdraw Interest'),
+                                  content: const Text(
+                                    'Are you sure you want to withdraw your interest in this startup?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: const Text(
+                                        'Withdraw',
+                                        style: TextStyle(
+                                          color: AppColors.danger,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm != true) return;
+
+                              setState(() {
+                                _isLoadingAction = true;
+                              });
+
+                              final res = await sl<StartupRepository>()
+                                  .withdrawInterest(s.id);
+
+                              if (mounted) {
+                                setState(() {
+                                  _isLoadingAction = false;
+                                });
+                                res.fold((f) => context.showSnack(f.message), (
+                                  success,
+                                ) {
+                                  if (success) {
+                                    setState(() {
+                                      _hasInvestedOverride = false;
+                                    });
+                                    context.showSnack(
+                                      'Withdrew interest successfully',
+                                    );
+                                  }
+                                });
+                              }
+                            } else {
+                              context.push(
+                                '${Routes.apply}?type=Investment&name=${Uri.encodeComponent(s.name)}&projectId=${s.id}',
+                              );
+                            }
                           },
                         ),
                       ),

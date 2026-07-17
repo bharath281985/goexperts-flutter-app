@@ -36,8 +36,7 @@ class MessageRepositoryImpl implements MessageRepository {
   Future<UserRole?> _role() =>
       _tokenRoleHelper?.resolve() ?? Future.value(null);
 
-  Future<String?> _userId() =>
-      _tokenRoleHelper?.userId() ?? Future.value(null);
+  Future<String?> _userId() => _tokenRoleHelper?.userId() ?? Future.value(null);
 
   @override
   Future<List<Conversation>> getCachedConversations() async {
@@ -107,7 +106,10 @@ class MessageRepositoryImpl implements MessageRepository {
 
     final list = result.valueOrNull;
     if (list == null) {
-      return result.fold((f) => Err(f), (_) => const Err(ServerFailure('Empty')));
+      return result.fold(
+        (f) => Err(f),
+        (_) => const Err(ServerFailure('Empty')),
+      );
     }
     await _saveCache(list);
     return Success(
@@ -130,9 +132,9 @@ class MessageRepositoryImpl implements MessageRepository {
         : (role == UserRole.freelancer)
         ? ApiEndpoints.chatConversation(conversationId)
         : (role == UserRole.investor)
-        ? '/investor/messages/$conversationId'
+        ? '/chat/conversations/$conversationId'
         : (role == UserRole.founder)
-        ? '/founder/messages/$conversationId'
+        ? '/chat/conversations/$conversationId'
         : ApiEndpoints.chatConversation(conversationId);
 
     final userId = await _userId();
@@ -165,18 +167,19 @@ class MessageRepositoryImpl implements MessageRepository {
         : ApiEndpoints.chatSend;
 
     final userId = await _userId();
+
     return _api.post<ChatMessage>(
       path,
       body: <String, dynamic>{
+        
         'conversationId': conversationId,
-        if (text.trim().isNotEmpty) 'text': text.trim(),
+
+        'text': text.trim(),
         if (attachmentUrl != null && attachmentUrl.isNotEmpty)
           'attachmentUrl': attachmentUrl,
       },
-      parser: (data) => _chatMessageFromJson(
-        Map<String, dynamic>.from(data as Map),
-        userId,
-      ),
+      parser: (data) =>
+          _chatMessageFromJson(Map<String, dynamic>.from(data as Map), userId),
       allowNullData: false,
     );
   }
@@ -192,13 +195,18 @@ class MessageRepositoryImpl implements MessageRepository {
     final role = await _role();
     final path = (role == UserRole.client)
         ? ApiEndpoints.clientMessagesSend
+        : (role == UserRole.investor)
+        ? ApiEndpoints.investorMessagesSend
+        : (role == UserRole.founder)
+        ? ApiEndpoints.founderMessagesSend
         : ApiEndpoints.chatSend;
 
     final trimmed = text?.trim() ?? '';
+
     final body = <String, dynamic>{
       'recipientId': recipientId,
       // Empty text = open conversation only (no default auto-message).
-      if (trimmed.isNotEmpty) 'text': trimmed,
+      'text': trimmed,
       if (projectId != null && projectId.isNotEmpty) 'projectId': projectId,
     };
 
@@ -206,10 +214,8 @@ class MessageRepositoryImpl implements MessageRepository {
     return _api.post<ChatMessage>(
       path,
       body: body,
-      parser: (data) => _chatMessageFromJson(
-        Map<String, dynamic>.from(data as Map),
-        userId,
-      ),
+      parser: (data) =>
+          _chatMessageFromJson(Map<String, dynamic>.from(data as Map), userId),
       allowNullData: false,
     );
   }
@@ -225,7 +231,9 @@ class MessageRepositoryImpl implements MessageRepository {
     }
     final size = await file.length();
     if (size > _maxAttachmentBytes) {
-      return const Err(ValidationFailure('File too large. Maximum size is 10MB.'));
+      return const Err(
+        ValidationFailure('File too large. Maximum size is 10MB.'),
+      );
     }
 
     final role = await _role();
@@ -372,7 +380,8 @@ class MessageRepositoryImpl implements MessageRepository {
     final senderId =
         json['senderId']?.toString() ?? json['sender_id']?.toString();
     final explicitMine = json['isMine'] as bool?;
-    final isMine = explicitMine ??
+    final isMine =
+        explicitMine ??
         (from == 'me' ||
             (currentUserId != null &&
                 senderId != null &&

@@ -26,6 +26,7 @@ class CatalogView<T> extends StatelessWidget {
     this.gridColumns = 1,
     this.showSearch = true,
     this.skeletonHeight = 120,
+    this.floatingActionButton,
   });
 
   final ListFetcher<T> fetcher;
@@ -41,6 +42,7 @@ class CatalogView<T> extends StatelessWidget {
   final int gridColumns;
   final bool showSearch;
   final double skeletonHeight;
+  final Widget? floatingActionButton;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +61,7 @@ class CatalogView<T> extends StatelessWidget {
         gridColumns: gridColumns,
         showSearch: showSearch,
         skeletonHeight: skeletonHeight,
+        floatingActionButton: floatingActionButton,
       ),
     );
   }
@@ -78,6 +81,7 @@ class _CatalogBody<T> extends StatefulWidget {
     required this.gridColumns,
     required this.showSearch,
     required this.skeletonHeight,
+    this.floatingActionButton,
   });
 
   final Widget Function(BuildContext, T, int) itemBuilder;
@@ -92,6 +96,7 @@ class _CatalogBody<T> extends StatefulWidget {
   final int gridColumns;
   final bool showSearch;
   final double skeletonHeight;
+  final Widget? floatingActionButton;
 
   @override
   State<_CatalogBody<T>> createState() => _CatalogBodyState<T>();
@@ -142,7 +147,7 @@ class _CatalogBodyState<T> extends State<_CatalogBody<T>> {
     return BlocBuilder<ListBloc<T>, ListState<T>>(
       builder: (context, state) {
         final bloc = context.read<ListBloc<T>>();
-        return Column(
+        final content = Column(
           children: [
             if (widget.showSearch)
               Padding(
@@ -187,6 +192,15 @@ class _CatalogBodyState<T> extends State<_CatalogBody<T>> {
             ),
           ],
         );
+
+        if (widget.floatingActionButton != null) {
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            body: content,
+            floatingActionButton: widget.floatingActionButton,
+          );
+        }
+        return content;
       },
     );
   }

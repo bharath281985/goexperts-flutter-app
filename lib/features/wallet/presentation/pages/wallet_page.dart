@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../app/constants/app_colors.dart';
 import '../../../../app/constants/app_sizes.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../app/router/route_names.dart';
+import '../../../../core/payments/payment_checkout_service.dart';
+import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section_header.dart';
@@ -91,7 +95,7 @@ class _WalletHeader extends StatelessWidget {
                           context,
                           Icons.receipt_long_outlined,
                           'Invoices',
-                          () => context.showSnack('Opening invoices'),
+                          () => context.push(Routes.freelancerInvoices),
                         ),
                       ),
                       AppSizes.hGapMd,
@@ -100,7 +104,7 @@ class _WalletHeader extends StatelessWidget {
                           context,
                           Icons.add_card_outlined,
                           'Add Money',
-                          () => context.showSnack('Add money'),
+                          () => _addMoney(context),
                         ),
                       ),
                     ],
@@ -114,6 +118,116 @@ class _WalletHeader extends StatelessWidget {
           AppSizes.vGapSm,
         ],
       ),
+    );
+  }
+
+  Future<void> _addMoney(BuildContext context) async {
+    final amountController = TextEditingController();
+
+    final amount = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Add Funds'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Enter the amount you would like to add to your wallet.',
+              ),
+              AppSizes.vGapMd,
+              AppTextField(
+                controller: amountController,
+                label: 'Amount',
+                hint: '0.00',
+                prefixIcon: Icons.currency_rupee_rounded,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final val = double.tryParse(amountController.text.trim());
+                if (val == null || val <= 0) {
+                  dialogContext.showSnack(
+                    'Enter a valid amount',
+                    isError: true,
+                  );
+                  return;
+                }
+                Navigator.pop(dialogContext, val);
+              },
+              child: const Text('Add Amount'),
+            ),
+          ],
+        );
+      },
+    );
+
+    amountController.dispose();
+    if (amount == null || amount <= 0) return;
+
+    if (!context.mounted) return;
+
+    // Show loading overlay
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final checkout = sl<PaymentCheckoutService>();
+    final result = await checkout.checkoutWithEasebuzz(
+      purpose: 'wallet_load',
+      amount: amount,
+      metadata: {'purpose': 'wallet_load'},
+    );
+
+    if (!context.mounted) return;
+    Navigator.pop(context); // Dismiss loading dialog
+
+    await result.fold(
+      (f) async {
+        context.showSnack(f.message, isError: true);
+      },
+      (paid) async {
+        // Show verification loading overlay
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator()),
+        );
+
+        final sdk = paid.checkout;
+        final verify = await checkout.verify(
+          paymentId: paid.payment.paymentId,
+          gateway: paid.payment.gateway,
+          purpose: 'wallet_load',
+          verification: {
+            'status': 'success',
+            'orderId': paid.payment.orderId,
+            'txnid': paid.payment.orderId,
+            ...sdk.raw,
+            if (sdk.raw['payment_response'] is Map)
+              ...Map<String, dynamic>.from(sdk.raw['payment_response'] as Map),
+          },
+        );
+
+        if (!context.mounted) return;
+        Navigator.pop(context); // Dismiss verification loader
+
+        verify.fold((f) => context.showSnack(f.message, isError: true), (_) {
+          context.showSnack('Payment verified! Wallet balance updated.');
+          onWithdrawalSuccess(); // reload the wallet summary
+        });
+      },
     );
   }
 

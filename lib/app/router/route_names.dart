@@ -42,6 +42,7 @@ class Routes {
   // Founder
   static const founderDashboard = '/founder/dashboard';
   static const founderStartup = '/founder/startup';
+  static const founderListStartup = '/founder/list-startup';
   static const founderInvestors = '/founder/investors';
   static const founderFunding = '/founder/funding';
   static const founderProfile = '/founder/profile';

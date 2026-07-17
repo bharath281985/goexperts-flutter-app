@@ -218,7 +218,15 @@ class _GlobalErrorInterceptor extends Interceptor {
         status,
         serverMessage: serverMessage,
       );
-      if (status != 401) {
+
+      final isChatRoute =
+          path.contains('/chat') ||
+          path.contains('/messages') ||
+          path.contains('/conversations');
+      final isExpectedChatError =
+          isChatRoute && (status == 404 || status == 400);
+
+      if (status != 401 && !isExpectedChatError) {
         GlobalErrorBus.instance.emit(message);
       }
     } else if (err.type == DioExceptionType.connectionError ||

@@ -9,7 +9,13 @@ import '../../domain/entities/investor.dart';
 
 /// Reusable investor card for founder discovery.
 class AppInvestorCard extends StatelessWidget {
-  const AppInvestorCard({super.key, required this.investor, this.onTap, this.onFollow, this.onConnect});
+  const AppInvestorCard({
+    super.key,
+    required this.investor,
+    this.onTap,
+    this.onFollow,
+    this.onConnect,
+  });
 
   final Investor investor;
   final VoidCallback? onTap;
@@ -25,7 +31,11 @@ class AppInvestorCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              AppAvatar(name: investor.name, imageUrl: investor.avatarUrl, size: 52),
+              AppAvatar(
+                name: investor.name,
+                imageUrl: investor.avatarUrl,
+                size: 52,
+              ),
               AppSizes.hGapMd,
               Expanded(
                 child: Column(
@@ -33,15 +43,34 @@ class AppInvestorCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Flexible(child: Text(investor.name, style: context.text.titleSmall, overflow: TextOverflow.ellipsis)),
+                        Flexible(
+                          child: Text(
+                            investor.name,
+                            style: context.text.titleSmall,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         if (investor.isVerified) ...[
                           const SizedBox(width: 4),
-                          const Icon(Icons.verified_rounded, size: 14, color: AppColors.info),
+                          const Icon(
+                            Icons.verified_rounded,
+                            size: 14,
+                            color: AppColors.info,
+                          ),
                         ],
                       ],
                     ),
-                    Text('${investor.investorType} · ${investor.company}',
-                        style: context.text.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(
+                      [
+                        if (investor.investorType.trim().isNotEmpty)
+                          investor.investorType.trim(),
+                        if (investor.company.trim().isNotEmpty)
+                          investor.company.trim(),
+                      ].join(' · '),
+                      style: context.text.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
@@ -56,9 +85,23 @@ class AppInvestorCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Expanded(child: _stat(context, 'Ticket', '${Formatters.compactCurrency(investor.minInvestment)}-${Formatters.compactCurrency(investor.maxInvestment)}')),
-                Expanded(child: _stat(context, 'Deals', '${investor.dealsCount}')),
-                Expanded(child: _stat(context, 'Portfolio', '${investor.portfolioCount}')),
+                Expanded(
+                  child: _stat(
+                    context,
+                    'Ticket',
+                    '${Formatters.compactCurrency(investor.minInvestment)}-${Formatters.compactCurrency(investor.maxInvestment)}',
+                  ),
+                ),
+                Expanded(
+                  child: _stat(context, 'Deals', '${investor.dealsCount}'),
+                ),
+                Expanded(
+                  child: _stat(
+                    context,
+                    'Portfolio',
+                    '${investor.portfolioCount}',
+                  ),
+                ),
               ],
             ),
           ),
@@ -66,7 +109,10 @@ class AppInvestorCard extends StatelessWidget {
           Wrap(
             spacing: AppSizes.sm,
             runSpacing: AppSizes.sm,
-            children: [for (final s in investor.interestedIndustries.take(3)) _pill(context, s)],
+            children: [
+              for (final s in investor.interestedIndustries.take(3))
+                _pill(context, s),
+            ],
           ),
           AppSizes.vGapMd,
           Row(
@@ -74,7 +120,9 @@ class AppInvestorCard extends StatelessWidget {
               Expanded(
                 child: OutlinedButton(
                   onPressed: onFollow,
-                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(40)),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(40),
+                  ),
                   child: Text(investor.isFollowing ? 'Following' : 'Follow'),
                 ),
               ),
@@ -82,7 +130,10 @@ class AppInvestorCard extends StatelessWidget {
               Expanded(
                 child: FilledButton(
                   onPressed: onConnect,
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.primary, minimumSize: const Size.fromHeight(40)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    minimumSize: const Size.fromHeight(40),
+                  ),
                   child: const Text('Connect'),
                 ),
               ),
@@ -94,18 +145,25 @@ class AppInvestorCard extends StatelessWidget {
   }
 
   Widget _stat(BuildContext context, String label, String value) => Column(
-        children: [
-          Text(value, style: context.text.titleSmall, textAlign: TextAlign.center),
-          Text(label, style: context.text.labelSmall),
-        ],
-      );
+    children: [
+      Text(value, style: context.text.titleSmall, textAlign: TextAlign.center),
+      Text(label, style: context.text.labelSmall),
+    ],
+  );
 
   Widget _pill(BuildContext context, String text) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSizes.sm, vertical: 3),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-        ),
-        child: Text(text, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: AppSizes.sm, vertical: 3),
+    decoration: BoxDecoration(
+      color: AppColors.primary.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+    ),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontSize: 11,
+        color: AppColors.primary,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 }

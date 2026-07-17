@@ -29,6 +29,7 @@ class Startup extends Equatable {
     this.isSaved = false,
     this.isFollowing = false,
     this.isVerified = true,
+    this.hasInvested = false,
     this.tags = const [],
   });
 
@@ -58,6 +59,7 @@ class Startup extends Equatable {
   final bool isSaved;
   final bool isFollowing;
   final bool isVerified;
+  final bool hasInvested;
   final List<String> tags;
 
   double get fundingProgress =>
@@ -66,6 +68,7 @@ class Startup extends Equatable {
   Startup copyWith({
     bool? isSaved,
     bool? isFollowing,
+    bool? hasInvested,
     int? investorInterests,
     int? views,
     double? fundingRaised,
@@ -97,6 +100,7 @@ class Startup extends Equatable {
     isSaved: isSaved ?? this.isSaved,
     isFollowing: isFollowing ?? this.isFollowing,
     isVerified: isVerified,
+    hasInvested: hasInvested ?? this.hasInvested,
     tags: tags,
   );
 
@@ -113,6 +117,7 @@ class Startup extends Equatable {
 
     final name =
         profile?['startupName']?.toString() ??
+        json['startup']?.toString() ??
         json['name']?.toString() ??
         json['fullName']?.toString() ??
         'Startup';
@@ -136,11 +141,13 @@ class Startup extends Equatable {
         (profile?['raised'] as num?)?.toDouble() ??
         (profile?['fundingRequired'] as num?)?.toDouble() ??
         (json['fundingRequired'] as num?)?.toDouble() ??
+        (json['funding'] as num?)?.toDouble() ??
         0.0;
 
     final equityOffered =
         (profile?['equityOffered'] as num?)?.toDouble() ??
         (json['equityOffered'] as num?)?.toDouble() ??
+        (json['equity'] as num?)?.toDouble() ??
         0.0;
 
     final city = json['city'] as String?;
@@ -160,12 +167,16 @@ class Startup extends Equatable {
     final logoUrl =
         json['avatarUrl'] as String? ??
         json['logoUrl'] as String? ??
+        json['logo'] as String? ??
         profile?['logoUrl'] as String?;
     final coverUrl =
-        json['coverUrl'] as String? ?? profile?['coverUrl'] as String?;
+        json['coverUrl'] as String? ??
+        json['coverimage'] as String? ??
+        profile?['coverUrl'] as String?;
     final founderAvatar =
         json['avatarUrl'] as String? ??
         json['founderAvatar'] as String? ??
+        json['logo'] as String? ??
         profile?['founderAvatar'] as String?;
 
     bool toBool(dynamic val) {
@@ -189,7 +200,7 @@ class Startup extends Equatable {
       fundingRequired: fundingRequired,
       equityOffered: equityOffered,
       location: location,
-      founderId: profile?['id']?.toString() ?? json['id']?.toString(),
+      founderId: profile?['id']?.toString(),
       logoUrl: logoUrl,
       coverUrl: coverUrl,
       founderAvatar: founderAvatar,
@@ -245,6 +256,11 @@ class Startup extends Equatable {
           toBool(json['verified']) ||
           toBool(profile?['isVerified']) ||
           toBool(profile?['verified']),
+      hasInvested:
+          toBool(json['hasInvested']) ||
+          toBool(profile?['hasInvested']) ||
+          toBool(json['has_invested']) ||
+          toBool(profile?['has_invested']),
       tags:
           (json['tags'] as List?)?.map((e) => e.toString()).toList() ??
           (profile?['tags'] as List?)?.map((e) => e.toString()).toList() ??
@@ -253,5 +269,5 @@ class Startup extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, founderId, isSaved, isFollowing];
+  List<Object?> get props => [id, founderId, isSaved, isFollowing, hasInvested];
 }

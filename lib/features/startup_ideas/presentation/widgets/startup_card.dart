@@ -16,12 +16,16 @@ class AppStartupCard extends StatelessWidget {
     this.onTap,
     this.onSave,
     this.onInterest,
+    this.onEdit,
+    this.onDelete,
   });
 
   final Startup startup;
   final VoidCallback? onTap;
   final VoidCallback? onSave;
   final VoidCallback? onInterest;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -58,11 +62,20 @@ class AppStartupCard extends StatelessWidget {
                   AppSizes.vGapLg,
                   _Stats(startup: startup),
                   AppSizes.vGapXl,
-                  _Actions(
-                    isSaved: startup.isSaved,
-                    onSave: onSave,
-                    onInterest: onInterest,
-                  ),
+                  if (onSave != null ||
+                      onInterest != null ||
+                      onEdit != null ||
+                      onDelete != null) ...[
+                    AppSizes.vGapXl,
+                    _Actions(
+                      isSaved: startup.isSaved,
+                      onSave: onSave,
+                      onInterest: onInterest,
+                      hasInvested: startup.hasInvested,
+                      onEdit: onEdit,
+                      onDelete: onDelete,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -431,14 +444,66 @@ class _Actions extends StatelessWidget {
     required this.isSaved,
     required this.onSave,
     required this.onInterest,
+    this.hasInvested = false,
+    this.onEdit,
+    this.onDelete,
   });
 
   final bool isSaved;
   final VoidCallback? onSave;
   final VoidCallback? onInterest;
+  final bool hasInvested;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
+    if (onEdit != null || onDelete != null) {
+      return Row(
+        children: [
+          if (onDelete != null)
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onDelete,
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.danger,
+                  size: AppSizes.iconLg,
+                ),
+                label: Text(
+                  'Delete',
+                  style: TextStyle(
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  side: const BorderSide(color: AppColors.danger),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  ),
+                ),
+              ),
+            ),
+          if (onDelete != null && onEdit != null) AppSizes.hGapMd,
+          if (onEdit != null)
+            Expanded(
+              child: AppPrimaryButton(
+                label: 'Edit',
+                icon: Icons.edit_outlined,
+                onPressed: onEdit,
+                gradient: false,
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.primary.withValues(
+                  alpha: 0.5,
+                ),
+                height: 56,
+              ),
+            ),
+        ],
+      );
+    }
     return Row(
       children: [
         Expanded(
@@ -468,11 +533,13 @@ class _Actions extends StatelessWidget {
         AppSizes.hGapMd,
         Expanded(
           child: AppPrimaryButton(
-            label: 'Invest',
-            icon: Icons.trending_up_rounded,
+            label: hasInvested ? 'Withdraw' : 'Invest',
+            icon: hasInvested
+                ? Icons.cancel_outlined
+                : Icons.trending_up_rounded,
             onPressed: onInterest,
             gradient: false,
-            backgroundColor: AppColors.primary,
+            backgroundColor: hasInvested ? AppColors.danger : AppColors.primary,
             disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
             height: 56,
           ),

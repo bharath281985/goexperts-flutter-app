@@ -124,34 +124,8 @@ class InvestorRepositoryImpl implements InvestorRepository {
     return _api.deleteAction(ApiEndpoints.investorWatchlistItem(id));
   }
 
-  Investor _investorFromJson(Map<String, dynamic> json) => Investor(
-    id: json['id']?.toString() ?? '',
-    name: json['name'] as String? ?? 'Investor',
-    investorType: json['investorType'] as String? ?? 'Angel',
-    company: json['company'] as String? ?? '',
-    location: json['location'] as String? ?? 'N/A',
-    minInvestment: (json['minInvestment'] as num?)?.toDouble() ?? 0,
-    maxInvestment: (json['maxInvestment'] as num?)?.toDouble() ?? 0,
-    interestedIndustries:
-        (json['interestedIndustries'] as List?)
-            ?.map((e) => e.toString())
-            .toList() ??
-        const [],
-    avatarUrl: json['avatarUrl'] as String?,
-    coverUrl: json['coverUrl'] as String?,
-    bio: json['bio'] as String? ?? '',
-    partnerRole: json['partnerRole'] as String? ?? 'Strategic Partner',
-    stagePreferences:
-        (json['stagePreferences'] as List?)
-            ?.map((e) => e.toString())
-            .toList() ??
-        const [],
-    dealsCount: (json['dealsCount'] as num?)?.toInt() ?? 0,
-    portfolioCount: (json['portfolioCount'] as num?)?.toInt() ?? 0,
-    isVerified: json['isVerified'] as bool? ?? false,
-    isFollowing: json['isFollowing'] as bool? ?? false,
-    isSaved: json['isSaved'] as bool? ?? false,
-  );
+  Investor _investorFromJson(Map<String, dynamic> json) =>
+      Investor.fromApiJson(json);
 
   Deal _dealFromJson(Map<String, dynamic> json) => Deal(
     id: json['id']?.toString() ?? '',

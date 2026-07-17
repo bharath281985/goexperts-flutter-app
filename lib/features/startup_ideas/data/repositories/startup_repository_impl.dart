@@ -24,7 +24,9 @@ class StartupRepositoryImpl implements StartupRepository {
     final role = await _role();
     final path = role == UserRole.investor
         ? ApiEndpoints.investorStartups
-        : '/startups';
+        : role == UserRole.founder
+        ? ApiEndpoints.founderIdeas
+        : ApiEndpoints.publicStartups;
     return _api.getEnvelope<Paginated<Startup>>(
       path,
       query: params.toApiQuery(),
@@ -43,7 +45,9 @@ class StartupRepositoryImpl implements StartupRepository {
     final role = await _role();
     final path = role == UserRole.investor
         ? ApiEndpoints.investorStartup(id)
-        : '/startups/$id';
+        : role == UserRole.founder
+        ? '${ApiEndpoints.founderIdeas}/$id'
+        : '${ApiEndpoints.publicStartups}/$id';
     return _api.get<Startup>(
       path,
       parser: (raw) =>
@@ -60,7 +64,7 @@ class StartupRepositoryImpl implements StartupRepository {
       if (post.isSuccess) return post;
       return _api.deleteAction(ApiEndpoints.investorStartupSave(id));
     }
-    return _api.postAction('/startups/$id/save');
+    return _api.postAction('${ApiEndpoints.publicStartups}/$id/save');
   }
 
   @override
@@ -79,6 +83,43 @@ class StartupRepositoryImpl implements StartupRepository {
       ApiEndpoints.investorExpressInterest,
       body: {'startupId': id},
     );
+  }
+
+  @override
+  Future<Result<bool>> withdrawInterest(String id) async {
+    if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
+    return _api.postAction(ApiEndpoints.investorCancelInvestment(id));
+  }
+
+  @override
+  Future<Result<Startup>> createIdea(Map<String, dynamic> data) async {
+    if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
+    return _api.post<Startup>(
+      ApiEndpoints.founderIdeas,
+      body: data,
+      parser: (raw) =>
+          Startup.fromApiJson(Map<String, dynamic>.from(raw as Map)),
+    );
+  }
+
+  @override
+  Future<Result<Startup>> updateIdea(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
+    return _api.put<Startup>(
+      '${ApiEndpoints.founderIdeas}/$id',
+      body: data,
+      parser: (raw) =>
+          Startup.fromApiJson(Map<String, dynamic>.from(raw as Map)),
+    );
+  }
+
+  @override
+  Future<Result<bool>> deleteIdea(String id) async {
+    if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
+    return _api.deleteAction('${ApiEndpoints.founderIdeas}/$id');
   }
 
   Future<Result<T>> _apiNotConfigured<T>() async =>

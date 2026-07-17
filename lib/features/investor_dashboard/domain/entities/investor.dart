@@ -5,6 +5,7 @@ import '../../../../core/utils/enums.dart';
 class Investor extends Equatable {
   const Investor({
     required this.id,
+    this.investorId = '',
     required this.name,
     required this.investorType,
     required this.company,
@@ -15,7 +16,7 @@ class Investor extends Equatable {
     this.avatarUrl,
     this.coverUrl,
     this.bio = '',
-    this.partnerRole = 'Sleeping Partner',
+    this.partnerRole = '',
     this.stagePreferences = const ['Seed', 'Series A'],
     this.dealsCount = 0,
     this.portfolioCount = 0,
@@ -25,6 +26,7 @@ class Investor extends Equatable {
   });
 
   final String id;
+  final String investorId;
   final String name;
   final String investorType;
   final String company;
@@ -44,28 +46,114 @@ class Investor extends Equatable {
   final bool isSaved;
 
   Investor copyWith({bool? isFollowing, bool? isSaved}) => Investor(
-        id: id,
-        name: name,
-        investorType: investorType,
-        company: company,
-        location: location,
-        minInvestment: minInvestment,
-        maxInvestment: maxInvestment,
-        interestedIndustries: interestedIndustries,
-        avatarUrl: avatarUrl,
-        coverUrl: coverUrl,
-        bio: bio,
-        partnerRole: partnerRole,
-        stagePreferences: stagePreferences,
-        dealsCount: dealsCount,
-        portfolioCount: portfolioCount,
-        isVerified: isVerified,
-        isFollowing: isFollowing ?? this.isFollowing,
-        isSaved: isSaved ?? this.isSaved,
-      );
+    id: id,
+    investorId: investorId,
+    name: name,
+    investorType: investorType,
+    company: company,
+    location: location,
+    minInvestment: minInvestment,
+    maxInvestment: maxInvestment,
+    interestedIndustries: interestedIndustries,
+    avatarUrl: avatarUrl,
+    coverUrl: coverUrl,
+    bio: bio,
+    partnerRole: partnerRole,
+    stagePreferences: stagePreferences,
+    dealsCount: dealsCount,
+    portfolioCount: portfolioCount,
+    isVerified: isVerified,
+    isFollowing: isFollowing ?? this.isFollowing,
+    isSaved: isSaved ?? this.isSaved,
+  );
+
+  factory Investor.fromApiJson(Map<String, dynamic> json) {
+    final Map<String, dynamic>? profile =
+        (json['investorProfile'] ?? json['investor_profile']) != null
+        ? Map<String, dynamic>.from(
+            (json['investorProfile'] ?? json['investor_profile']) as Map,
+          )
+        : null;
+
+    final id = (json['id']?.toString() ?? '');
+    final profileId =
+        (profile?['id']?.toString() ?? json['investorId']?.toString() ?? '')
+            ;
+    final name =
+        json['fullName']?.toString() ?? json['name']?.toString() ?? 'Investor';
+    final bio = json['bio']?.toString() ?? '';
+    final avatarUrl = json['avatarUrl'] as String?;
+
+    final country = json['country'] as String?;
+    final city = json['city'] as String?;
+    String location = 'N/A';
+    if (city != null && country != null) {
+      location = '$city, $country';
+    } else if (city != null) {
+      location = city;
+    } else if (country != null) {
+      location = country;
+    }
+
+    final ticketMin =
+        (profile?['ticketMin'] as num?)?.toDouble() ??
+        (json['minInvestment'] as num?)?.toDouble() ??
+        0.0;
+    final ticketMax =
+        (profile?['ticketMax'] as num?)?.toDouble() ??
+        (json['maxInvestment'] as num?)?.toDouble() ??
+        0.0;
+    final company =
+        profile?['firm']?.toString() ?? json['company']?.toString() ?? '';
+
+    final focusAreasStr = profile?['focusAreas']?.toString() ?? '';
+    List<String> interestedIndustries = const [];
+    if (focusAreasStr.isNotEmpty) {
+      interestedIndustries = focusAreasStr
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    } else if (json['interestedIndustries'] is List) {
+      interestedIndustries = (json['interestedIndustries'] as List)
+          .map((e) => e.toString())
+          .toList();
+    }
+
+    final role = json['role']?.toString() ?? '';
+    final focusAreasStrForType = profile?['focusAreas']?.toString() ?? '';
+    final investorType = focusAreasStrForType.trim().isNotEmpty
+        ? focusAreasStrForType
+        : 'All';
+
+    final isVerified =
+        json['isVerified'] as bool? ?? json['verified'] as bool? ?? false;
+    final isFollowing = json['isFollowing'] as bool? ?? false;
+    final isSaved = json['isSaved'] as bool? ?? false;
+
+    return Investor(
+      id: id,
+      investorId: profileId,
+      name: name,
+      investorType: investorType,
+      company: company,
+      location: location,
+      minInvestment: ticketMin,
+      maxInvestment: ticketMax,
+      interestedIndustries: interestedIndustries,
+      avatarUrl: avatarUrl,
+      bio: bio,
+      partnerRole: role,
+      dealsCount: (profile?['deals'] as num?)?.toInt() ?? 0,
+      portfolioCount: 0,
+      isVerified: isVerified,
+      isFollowing: isFollowing,
+      isSaved: isSaved,
+    );
+  }
 
   @override
-  List<Object?> get props => [id, isFollowing, isSaved];
+  List<Object?> get props => [id, investorId, isFollowing, isSaved];
 }
 
 /// A deal / investment opportunity in the pipeline.
@@ -120,8 +208,9 @@ class PortfolioItem extends Equatable {
   final DateTime investedAt;
   final String? logoUrl;
 
-  double get roi =>
-      investedAmount == 0 ? 0 : ((currentValue - investedAmount) / investedAmount) * 100;
+  double get roi => investedAmount == 0
+      ? 0
+      : ((currentValue - investedAmount) / investedAmount) * 100;
 
   @override
   List<Object?> get props => [id, currentValue];

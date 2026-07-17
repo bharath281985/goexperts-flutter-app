@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/constants/app_colors.dart';
 import '../../../../app/constants/app_sizes.dart';
@@ -6,14 +7,14 @@ import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/utils/bookmark_manager.dart';
+import '../../../../core/utils/enums.dart';
 import '../../../../core/utils/paginated.dart';
 import '../../../../core/utils/result.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/catalog_view.dart';
-import '../../../client_dashboard/domain/entities/company.dart';
-import '../../../client_dashboard/domain/repositories/company_repository.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../freelancer_dashboard/domain/entities/freelancer.dart';
 import '../../../freelancer_dashboard/domain/repositories/freelancer_repository.dart';
 import '../../../freelancer_dashboard/presentation/widgets/freelancer_card.dart';
@@ -27,6 +28,8 @@ import '../../../startup_ideas/domain/repositories/startup_repository.dart';
 import '../../../startup_ideas/presentation/widgets/startup_card.dart';
 import '../../../catalog/domain/entities/catalog_entities.dart';
 import '../../../catalog/domain/repositories/catalog_repository.dart';
+import '../../../founder_dashboard/domain/entities/founder.dart';
+import '../../../founder_dashboard/domain/repositories/founder_repository.dart';
 
 class BookmarksPage extends StatelessWidget {
   const BookmarksPage({super.key});
@@ -95,27 +98,6 @@ class BookmarksPage extends StatelessWidget {
     });
   }
 
-  Future<Result<Paginated<Company>>> _fetchCompanies(QueryParams params) async {
-    final res = await sl<CompanyRepository>().getCompanies(params);
-    return res.fold((f) => Err(f), (paginated) {
-      final savedIds = BookmarkManager.instance.getIds(
-        BookmarkManager.categoryCompanies,
-      );
-      final filtered = paginated.items
-          .where((x) => savedIds.contains(x.id))
-          .map((x) => x.copyWith(isSaved: true))
-          .toList();
-      return Success(
-        Paginated(
-          items: filtered,
-          page: paginated.page,
-          totalPages: 1,
-          totalItems: filtered.length,
-        ),
-      );
-    });
-  }
-
   Future<Result<Paginated<Investor>>> _fetchInvestors(
     QueryParams params,
   ) async {
@@ -127,28 +109,6 @@ class BookmarksPage extends StatelessWidget {
       final filtered = paginated.items
           .where((x) => savedIds.contains(x.id))
           .map((x) => x.copyWith(isSaved: true))
-          .toList();
-      return Success(
-        Paginated(
-          items: filtered,
-          page: paginated.page,
-          totalPages: 1,
-          totalItems: filtered.length,
-        ),
-      );
-    });
-  }
-
-  Future<Result<Paginated<ServiceItem>>> _fetchServices(
-    QueryParams params,
-  ) async {
-    final res = await sl<CatalogRepository>().getServices(params);
-    return res.fold((f) => Err(f), (paginated) {
-      final savedIds = BookmarkManager.instance.getIds(
-        BookmarkManager.categoryServices,
-      );
-      final filtered = paginated.items
-          .where((x) => savedIds.contains(x.id))
           .toList();
       return Success(
         Paginated(
@@ -205,317 +165,352 @@ class BookmarksPage extends StatelessWidget {
     });
   }
 
+  Future<Result<Paginated<Founder>>> _fetchFounders(QueryParams params) async {
+    final res = await sl<FounderRepository>().getFounders(params);
+    return res.fold((f) => Err(f), (paginated) {
+      final savedIds = BookmarkManager.instance.getIds(
+        BookmarkManager.categoryFounders,
+      );
+      final filtered = paginated.items
+          .where((x) => savedIds.contains(x.id))
+          .toList();
+      return Success(
+        Paginated(
+          items: filtered,
+          page: paginated.page,
+          totalPages: 1,
+          totalItems: filtered.length,
+        ),
+      );
+    });
+  }
+
+  Widget _projectsView(BuildContext context) {
+    return CatalogView<Project>(
+      fetcher: _fetchProjects,
+      showSearch: false,
+      emptyTitle: 'No saved projects',
+      emptyIcon: Icons.bookmark_outline_rounded,
+      itemBuilder: (context, p, _) => AppProjectCard(
+        project: p.copyWith(
+          isSaved: BookmarkManager.instance.isBookmarked(
+            BookmarkManager.categoryProjects,
+            p.id,
+          ),
+        ),
+        onTap: () => context.push('${Routes.projectDetails}/${p.id}'),
+        onSave: () => BookmarkManager.instance.toggle(
+          BookmarkManager.categoryProjects,
+          p.id,
+        ),
+      ),
+    );
+  }
+
+  Widget _freelancersView(BuildContext context) {
+    return CatalogView<Freelancer>(
+      fetcher: _fetchFreelancers,
+      showSearch: false,
+      emptyTitle: 'No saved freelancers',
+      emptyIcon: Icons.bookmark_outline_rounded,
+      itemBuilder: (context, f, _) => AppFreelancerCard(
+        freelancer: f.copyWith(
+          isSaved: BookmarkManager.instance.isBookmarked(
+            BookmarkManager.categoryFreelancers,
+            f.id,
+          ),
+        ),
+        onTap: () => context.push('${Routes.publicFreelancer}/${f.id}'),
+        onSave: () => BookmarkManager.instance.toggle(
+          BookmarkManager.categoryFreelancers,
+          f.id,
+        ),
+      ),
+    );
+  }
+
+  Widget _startupsView(BuildContext context) {
+    return CatalogView<Startup>(
+      fetcher: _fetchStartups,
+      showSearch: false,
+      emptyTitle: 'No saved startups',
+      emptyIcon: Icons.bookmark_outline_rounded,
+      itemBuilder: (context, s, _) => AppStartupCard(
+        startup: s.copyWith(
+          isSaved: BookmarkManager.instance.isBookmarked(
+            BookmarkManager.categoryStartups,
+            s.id,
+          ),
+        ),
+        onTap: () => context.push('${Routes.startupDetails}/${s.id}'),
+        onSave: () => BookmarkManager.instance.toggle(
+          BookmarkManager.categoryStartups,
+          s.id,
+        ),
+      ),
+    );
+  }
+
+  Widget _investorsView(BuildContext context) {
+    return CatalogView<Investor>(
+      fetcher: _fetchInvestors,
+      showSearch: false,
+      emptyTitle: 'No saved investors',
+      emptyIcon: Icons.bookmark_outline_rounded,
+      itemBuilder: (context, i, _) => AppCard(
+        onTap: () => context.push('${Routes.publicInvestor}/${i.id}'),
+        child: Row(
+          children: [
+            AppAvatar(name: i.name, imageUrl: i.avatarUrl, size: 48),
+            AppSizes.hGapMd,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(i.name, style: context.text.titleSmall),
+                  Text(
+                    '${i.investorType} · ${i.company}',
+                    style: context.text.labelSmall,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.bookmark_rounded,
+                color: AppColors.primary,
+              ),
+              onPressed: () => BookmarkManager.instance.toggle(
+                BookmarkManager.categoryInvestors,
+                i.id,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _foundersView(BuildContext context) {
+    return CatalogView<Founder>(
+      fetcher: _fetchFounders,
+      showSearch: false,
+      emptyTitle: 'No saved founders',
+      emptyIcon: Icons.bookmark_outline_rounded,
+      itemBuilder: (context, f, _) => AppCard(
+        onTap: () => context.push('${Routes.publicFounder}/${f.id}'),
+        child: Row(
+          children: [
+            AppAvatar(name: f.name, imageUrl: f.avatarUrl, size: 48),
+            AppSizes.hGapMd,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(f.name, style: context.text.titleSmall),
+                  Text(
+                    '${f.founderType} · ${f.startupName}',
+                    style: context.text.labelSmall,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                BookmarkManager.instance.isBookmarked(
+                      BookmarkManager.categoryFounders,
+                      f.id,
+                    )
+                    ? Icons.bookmark_rounded
+                    : Icons.bookmark_outline_rounded,
+                color: AppColors.primary,
+              ),
+              onPressed: () => BookmarkManager.instance.toggle(
+                BookmarkManager.categoryFounders,
+                f.id,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _technologiesView(BuildContext context) {
+    return CatalogView<Technology>(
+      fetcher: _fetchTechnologies,
+      showSearch: false,
+      emptyTitle: 'No saved technologies',
+      emptyIcon: Icons.bookmark_outline_rounded,
+      itemBuilder: (context, t, _) => AppCard(
+        onTap: () => context.push('${Routes.technologyDetails}/${t.id}'),
+        child: Row(
+          children: [
+            const Icon(Icons.code_rounded, color: AppColors.primary, size: 28),
+            AppSizes.hGapMd,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t.name, style: context.text.titleSmall),
+                  Text(t.category, style: context.text.labelSmall),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.bookmark_rounded,
+                color: AppColors.primary,
+              ),
+              onPressed: () => BookmarkManager.instance.toggle(
+                BookmarkManager.categoryTechnologies,
+                t.id,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _categoriesView(BuildContext context) {
+    return CatalogView<CategoryItem>(
+      fetcher: _fetchCategories,
+      showSearch: false,
+      emptyTitle: 'No saved categories',
+      emptyIcon: Icons.bookmark_outline_rounded,
+      itemBuilder: (context, c, _) => AppCard(
+        onTap: () => context.push('${Routes.categoryDetails}/${c.id}'),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.category_outlined,
+              color: AppColors.primary,
+              size: 28,
+            ),
+            AppSizes.hGapMd,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(c.name, style: context.text.titleSmall),
+                  Text(
+                    '${c.projectsCount} projects · ${c.freelancersCount} freelancers',
+                    style: context.text.labelSmall,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.bookmark_rounded,
+                color: AppColors.primary,
+              ),
+              onPressed: () => BookmarkManager.instance.toggle(
+                BookmarkManager.categoryCategories,
+                c.id,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<AuthBloc>().state;
+    final user = state.user;
+    final role = user?.role ?? UserRole.freelancer;
+
+    final List<Tab> tabs;
+    final List<Widget> tabViews;
+
+    switch (role) {
+      case UserRole.freelancer:
+        tabs = const [
+          Tab(text: 'Projects'),
+          Tab(text: 'Technologies'),
+          Tab(text: 'Categories'),
+          Tab(text: 'Searches & Filters'),
+          Tab(text: 'Collections & Folders'),
+          Tab(text: 'Resources & Blogs'),
+        ];
+        tabViews = [
+          _projectsView(context),
+
+          _technologiesView(context),
+          _categoriesView(context),
+          _buildSearchesAndFilters(context),
+          _buildCollectionsAndFolders(context),
+          _buildResourcesAndBlogs(context),
+        ];
+        break;
+      case UserRole.client:
+        tabs = const [
+          Tab(text: 'Freelancers'),
+          Tab(text: 'Projects'),
+          Tab(text: 'Searches & Filters'),
+          Tab(text: 'Collections & Folders'),
+          Tab(text: 'Resources & Blogs'),
+        ];
+        tabViews = [
+          _freelancersView(context),
+          _projectsView(context),
+          _buildSearchesAndFilters(context),
+          _buildCollectionsAndFolders(context),
+          _buildResourcesAndBlogs(context),
+        ];
+        break;
+      case UserRole.investor:
+        tabs = const [
+          Tab(text: 'Startups'),
+          Tab(text: 'Founders'),
+          Tab(text: 'Searches & Filters'),
+          Tab(text: 'Collections & Folders'),
+          Tab(text: 'Resources & Blogs'),
+        ];
+        tabViews = [
+          _startupsView(context),
+          _foundersView(context),
+          _buildSearchesAndFilters(context),
+          _buildCollectionsAndFolders(context),
+          _buildResourcesAndBlogs(context),
+        ];
+        break;
+      case UserRole.founder:
+        tabs = const [
+          Tab(text: 'Investors'),
+          Tab(text: 'Freelancers'),
+          Tab(text: 'Searches & Filters'),
+          Tab(text: 'Collections & Folders'),
+          Tab(text: 'Resources & Blogs'),
+        ];
+        tabViews = [
+          _investorsView(context),
+          _freelancersView(context),
+          _buildSearchesAndFilters(context),
+          _buildCollectionsAndFolders(context),
+          _buildResourcesAndBlogs(context),
+        ];
+        break;
+    }
+
     return ListenableBuilder(
       listenable: BookmarkManager.instance,
       builder: (context, _) {
         return DefaultTabController(
-          length: 11,
+          length: tabs.length,
           child: Scaffold(
             appBar: AppBar(
               title: const Text('Bookmarks'),
-              bottom: const TabBar(
+              bottom: TabBar(
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
-                tabs: [
-                  Tab(text: 'Projects'),
-                  Tab(text: 'Freelancers'),
-                  Tab(text: 'Startups'),
-                  Tab(text: 'Companies'),
-                  Tab(text: 'Investors'),
-                  Tab(text: 'Services'),
-                  Tab(text: 'Technologies'),
-                  Tab(text: 'Categories'),
-                  Tab(text: 'Searches & Filters'),
-                  Tab(text: 'Collections & Folders'),
-                  Tab(text: 'Resources & Blogs'),
-                ],
+                tabs: tabs,
               ),
             ),
-            body: TabBarView(
-              children: [
-                // 1. Projects
-                CatalogView<Project>(
-                  fetcher: _fetchProjects,
-                  showSearch: false,
-                  emptyTitle: 'No saved projects',
-                  emptyIcon: Icons.bookmark_outline_rounded,
-                  itemBuilder: (context, p, _) => AppProjectCard(
-                    project: p.copyWith(
-                      isSaved: BookmarkManager.instance.isBookmarked(
-                        BookmarkManager.categoryProjects,
-                        p.id,
-                      ),
-                    ),
-                    onTap: () =>
-                        context.push('${Routes.projectDetails}/${p.id}'),
-                    onSave: () => BookmarkManager.instance.toggle(
-                      BookmarkManager.categoryProjects,
-                      p.id,
-                    ),
-                  ),
-                ),
-                // 2. Freelancers
-                CatalogView<Freelancer>(
-                  fetcher: _fetchFreelancers,
-                  showSearch: false,
-                  emptyTitle: 'No saved freelancers',
-                  emptyIcon: Icons.bookmark_outline_rounded,
-                  itemBuilder: (context, f, _) => AppFreelancerCard(
-                    freelancer: f.copyWith(
-                      isSaved: BookmarkManager.instance.isBookmarked(
-                        BookmarkManager.categoryFreelancers,
-                        f.id,
-                      ),
-                    ),
-                    onTap: () =>
-                        context.push('${Routes.publicFreelancer}/${f.id}'),
-                    onSave: () => BookmarkManager.instance.toggle(
-                      BookmarkManager.categoryFreelancers,
-                      f.id,
-                    ),
-                  ),
-                ),
-                // 3. Startups
-                CatalogView<Startup>(
-                  fetcher: _fetchStartups,
-                  showSearch: false,
-                  emptyTitle: 'No saved startups',
-                  emptyIcon: Icons.bookmark_outline_rounded,
-                  itemBuilder: (context, s, _) => AppStartupCard(
-                    startup: s.copyWith(
-                      isSaved: BookmarkManager.instance.isBookmarked(
-                        BookmarkManager.categoryStartups,
-                        s.id,
-                      ),
-                    ),
-                    onTap: () =>
-                        context.push('${Routes.startupDetails}/${s.id}'),
-                    onSave: () => BookmarkManager.instance.toggle(
-                      BookmarkManager.categoryStartups,
-                      s.id,
-                    ),
-                  ),
-                ),
-                // 4. Companies
-                CatalogView<Company>(
-                  fetcher: _fetchCompanies,
-                  showSearch: false,
-                  emptyTitle: 'No saved companies',
-                  emptyIcon: Icons.bookmark_outline_rounded,
-                  itemBuilder: (context, c, _) => AppCard(
-                    onTap: () =>
-                        context.push('${Routes.publicCompany}/${c.id}'),
-                    child: Row(
-                      children: [
-                        AppAvatar(name: c.name, imageUrl: c.logoUrl, size: 48),
-                        AppSizes.hGapMd,
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(c.name, style: context.text.titleSmall),
-                              Text(
-                                '${c.industry} · ${c.location}',
-                                style: context.text.labelSmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.bookmark_rounded,
-                            color: AppColors.primary,
-                          ),
-                          onPressed: () => BookmarkManager.instance.toggle(
-                            BookmarkManager.categoryCompanies,
-                            c.id,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // 5. Investors
-                CatalogView<Investor>(
-                  fetcher: _fetchInvestors,
-                  showSearch: false,
-                  emptyTitle: 'No saved investors',
-                  emptyIcon: Icons.bookmark_outline_rounded,
-                  itemBuilder: (context, i, _) => AppCard(
-                    onTap: () =>
-                        context.push('${Routes.publicInvestor}/${i.id}'),
-                    child: Row(
-                      children: [
-                        AppAvatar(
-                          name: i.name,
-                          imageUrl: i.avatarUrl,
-                          size: 48,
-                        ),
-                        AppSizes.hGapMd,
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(i.name, style: context.text.titleSmall),
-                              Text(
-                                '${i.investorType} · ${i.company}',
-                                style: context.text.labelSmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.bookmark_rounded,
-                            color: AppColors.primary,
-                          ),
-                          onPressed: () => BookmarkManager.instance.toggle(
-                            BookmarkManager.categoryInvestors,
-                            i.id,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // 6. Services
-                CatalogView<ServiceItem>(
-                  fetcher: _fetchServices,
-                  showSearch: false,
-                  emptyTitle: 'No saved services',
-                  emptyIcon: Icons.bookmark_outline_rounded,
-                  itemBuilder: (context, s, _) => AppCard(
-                    onTap: () =>
-                        context.push('${Routes.serviceDetails}/${s.id}'),
-                    child: Row(
-                      children: [
-                        AppAvatar(
-                          name: s.name,
-                          imageUrl: s.providerAvatar,
-                          size: 48,
-                        ),
-                        AppSizes.hGapMd,
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                s.name,
-                                style: context.text.titleSmall,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(s.category, style: context.text.labelSmall),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.bookmark_rounded,
-                            color: AppColors.primary,
-                          ),
-                          onPressed: () => BookmarkManager.instance.toggle(
-                            BookmarkManager.categoryServices,
-                            s.id,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // 7. Technologies
-                CatalogView<Technology>(
-                  fetcher: _fetchTechnologies,
-                  showSearch: false,
-                  emptyTitle: 'No saved technologies',
-                  emptyIcon: Icons.bookmark_outline_rounded,
-                  itemBuilder: (context, t, _) => AppCard(
-                    onTap: () =>
-                        context.push('${Routes.technologyDetails}/${t.id}'),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.code_rounded,
-                          color: AppColors.primary,
-                          size: 28,
-                        ),
-                        AppSizes.hGapMd,
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(t.name, style: context.text.titleSmall),
-                              Text(t.category, style: context.text.labelSmall),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.bookmark_rounded,
-                            color: AppColors.primary,
-                          ),
-                          onPressed: () => BookmarkManager.instance.toggle(
-                            BookmarkManager.categoryTechnologies,
-                            t.id,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // 8. Categories
-                CatalogView<CategoryItem>(
-                  fetcher: _fetchCategories,
-                  showSearch: false,
-                  emptyTitle: 'No saved categories',
-                  emptyIcon: Icons.bookmark_outline_rounded,
-                  itemBuilder: (context, c, _) => AppCard(
-                    onTap: () =>
-                        context.push('${Routes.categoryDetails}/${c.id}'),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.category_outlined,
-                          color: AppColors.primary,
-                          size: 28,
-                        ),
-                        AppSizes.hGapMd,
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(c.name, style: context.text.titleSmall),
-                              Text(
-                                '${c.projectsCount} projects · ${c.freelancersCount} freelancers',
-                                style: context.text.labelSmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.bookmark_rounded,
-                            color: AppColors.primary,
-                          ),
-                          onPressed: () => BookmarkManager.instance.toggle(
-                            BookmarkManager.categoryCategories,
-                            c.id,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // 9. Searches & Filters
-                _buildSearchesAndFilters(context),
-                // 10. Collections & Folders
-                _buildCollectionsAndFolders(context),
-                // 11. Resources & Blogs
-                _buildResourcesAndBlogs(context),
-              ],
-            ),
+            body: TabBarView(children: tabViews),
           ),
         );
       },

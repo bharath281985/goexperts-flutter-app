@@ -300,6 +300,11 @@ GoRouter createRouter(AuthBloc authBloc) {
         builder: (_, __) => const MyStartupStandalonePage(),
       ),
       GoRoute(
+        path: Routes.founderListStartup,
+        builder: (_, __) =>
+            const RoleShell(role: UserRole.founder, initialIndex: 1),
+      ),
+      GoRoute(
         path: Routes.founderInvestors,
         builder: (_, __) => const InvestorsStandalonePage(),
       ),
@@ -361,10 +366,24 @@ GoRouter createRouter(AuthBloc authBloc) {
       // Detail / deep-link routes
       GoRoute(
         path: '${Routes.chat}/:id',
-        builder: (_, s) => ChatPage(
-          conversationId: s.pathParameters['id']!,
-          conversation: s.extra as Conversation?,
-        ),
+        builder: (_, s) {
+          final id = s.pathParameters['id']!;
+          Conversation? conversation = s.extra as Conversation?;
+          final qName = s.uri.queryParameters['name'];
+          final qAvatar = s.uri.queryParameters['avatarUrl'];
+          if (conversation == null && qName != null) {
+            conversation = Conversation(
+              id: id,
+              name: qName,
+              avatarUrl: qAvatar,
+              lastMessage: '',
+              lastMessageAt: DateTime.now(),
+              unreadCount: 0,
+              isOnline: true,
+            );
+          }
+          return ChatPage(conversationId: id, conversation: conversation);
+        },
       ),
       GoRoute(
         path: '${Routes.projectDetails}/:id',

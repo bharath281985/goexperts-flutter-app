@@ -46,13 +46,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
             onPressed: () async {
               final res = await repo.markAllRead();
               if (!mounted) return;
-              res.fold(
-                (f) => context.showSnack(f.message),
-                (_) {
-                  context.showSnack('All notifications marked as read');
-                  _reloadList();
-                },
-              );
+              res.fold((f) => context.showSnack(f.message), (_) {
+                context.showSnack('All notifications marked as read');
+                _reloadList();
+              });
               await _loadUnread();
             },
             child: const Text('Mark all read'),
@@ -67,23 +64,44 @@ class _NotificationsPageState extends State<NotificationsPage> {
         emptyIcon: Icons.notifications_none_rounded,
         skeletonHeight: 74,
         separator: const Divider(height: 1),
-        itemBuilder: (context, n, _) => AppNotificationTile(
-          title: n.title,
-          body: n.body,
-          time: Formatters.relative(n.createdAt),
-          icon: n.category.icon,
-          color: n.category.color,
-          isRead: n.isRead,
-          onTap: () async {
-            if (!n.isRead) {
-              final res = await repo.markRead(n.id);
-              if (!context.mounted) return;
-              res.fold((f) => context.showSnack(f.message), (_) {
-                _reloadList();
-              });
-              await _loadUnread();
-            }
+        itemBuilder: (context, n, _) => Dismissible(
+          key: Key(n.id),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            color: Colors.red.shade800,
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: const Icon(
+              Icons.delete_outline_rounded,
+              color: Colors.white,
+            ),
+          ),
+          onDismissed: (direction) async {
+            final res = await repo.delete(n.id);
+            if (!context.mounted) return;
+            res.fold((f) => context.showSnack(f.message), (_) {
+              context.showSnack('Notification deleted');
+            });
+            await _loadUnread();
           },
+          child: AppNotificationTile(
+            title: n.title,
+            body: n.body,
+            time: Formatters.relative(n.createdAt),
+            icon: n.category.icon,
+            color: n.category.color,
+            isRead: n.isRead,
+            onTap: () async {
+              if (!n.isRead) {
+                final res = await repo.markRead(n.id);
+                if (!context.mounted) return;
+                res.fold((f) => context.showSnack(f.message), (_) {
+                  _reloadList();
+                });
+                await _loadUnread();
+              }
+            },
+          ),
         ),
       ),
     );

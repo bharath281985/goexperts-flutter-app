@@ -90,8 +90,12 @@ class NotificationRepositoryImpl implements NotificationRepository {
   @override
   Future<Result<Map<String, dynamic>>> getPreferences() async {
     if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
+    final role = await _tokenRoleHelper?.resolve();
+    final path = (role == UserRole.freelancer)
+        ? ApiEndpoints.freelancerNotificationPreferences
+        : ApiEndpoints.notificationsPreferences;
     return _api.get<Map<String, dynamic>>(
-      ApiEndpoints.notificationsPreferences,
+      path,
       parser: (raw) => Map<String, dynamic>.from(raw as Map),
     );
   }
@@ -99,8 +103,12 @@ class NotificationRepositoryImpl implements NotificationRepository {
   @override
   Future<Result<bool>> updatePreferences(Map<String, dynamic> data) async {
     if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
+    final role = await _tokenRoleHelper?.resolve();
+    final path = (role == UserRole.freelancer)
+        ? ApiEndpoints.freelancerNotificationPreferences
+        : ApiEndpoints.notificationsPreferences;
     final res = await _api.put<Map<String, dynamic>>(
-      ApiEndpoints.notificationsPreferences,
+      path,
       body: data,
       parser: (raw) => Map<String, dynamic>.from(raw as Map),
     );
@@ -108,15 +116,15 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }
 
   static AppNotification _fromJson(Map<String, dynamic> json) {
-    final categoryRaw = json['category'] as String? ??
-        json['type'] as String? ??
-        'system';
+    final categoryRaw =
+        json['category'] as String? ?? json['type'] as String? ?? 'system';
     final category = NotificationCategory.values.firstWhere(
       (c) => c.name == categoryRaw,
       orElse: () => NotificationCategory.system,
     );
     final readAt = json['readAt'] ?? json['read_at'];
-    final isRead = json['isRead'] as bool? ??
+    final isRead =
+        json['isRead'] as bool? ??
         json['read'] as bool? ??
         (readAt != null && readAt.toString().isNotEmpty);
     return AppNotification(

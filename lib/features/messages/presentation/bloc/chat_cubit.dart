@@ -5,6 +5,8 @@ import '../../../../core/utils/enums.dart';
 import '../../domain/entities/conversation.dart';
 import '../../domain/repositories/message_repository.dart';
 
+import '../../../../core/utils/result.dart';
+
 class ChatState extends Equatable {
   const ChatState({
     this.status = ViewStatus.initial,
@@ -22,13 +24,12 @@ class ChatState extends Equatable {
     List<ChatMessage>? messages,
     bool? peerTyping,
     bool? uploading,
-  }) =>
-      ChatState(
-        status: status ?? this.status,
-        messages: messages ?? this.messages,
-        peerTyping: peerTyping ?? this.peerTyping,
-        uploading: uploading ?? this.uploading,
-      );
+  }) => ChatState(
+    status: status ?? this.status,
+    messages: messages ?? this.messages,
+    peerTyping: peerTyping ?? this.peerTyping,
+    uploading: uploading ?? this.uploading,
+  );
 
   @override
   List<Object?> get props => [status, messages, peerTyping, uploading];
@@ -37,31 +38,69 @@ class ChatState extends Equatable {
 /// Chat controller. `incomingMessages` binds to the realtime transport
 /// (Socket.IO / Supabase / Firebase / Pusher / Ably) once wired.
 class ChatCubit extends Cubit<ChatState> {
-  ChatCubit(this._repository, this.conversationId) : super(const ChatState());
+  ChatCubit(this._repository, this.conversationId) : super(const ChatState()) {
+    _convoId = conversationId;
+  }
 
   final MessageRepository _repository;
   final String conversationId;
+  late String _convoId;
   StreamSubscription<ChatMessage>? _sub;
   Timer? _pollTimer;
 
   Future<void> load() async {
     emit(state.copyWith(status: ViewStatus.loading));
-    final result = await _repository.getMessages(conversationId);
+    var result = await _repository.getMessages(_convoId);
+
+    if (result.isFailure) {
+      final failure = result.failureOrNull;
+      final isNewChat =
+          failure != null &&
+          (failure.message.contains('404') ||
+              failure.message.contains('not found') ||
+              failure.message.contains('NOT_FOUND') ||
+              failure.message.contains('400') ||
+              failure.message.contains('Record not found'));
+      if (isNewChat) {
+        final startResult = await _repository.startChat(recipientId: _convoId);
+        if (startResult.isSuccess) {
+          final starter = startResult.valueOrNull;
+          if (starter != null && starter.conversationId.isNotEmpty) {
+            _convoId = starter.conversationId;
+            result = await _repository.getMessages(_convoId);
+          } else {
+            result = const Success([]);
+          }
+        } else {
+          result = const Success([]);
+        }
+      }
+    }
+
     result.fold(
       (_) => emit(state.copyWith(status: ViewStatus.failure)),
       (messages) =>
           emit(state.copyWith(status: ViewStatus.success, messages: messages)),
     );
-    await _repository.markConversationRead(conversationId);
-    _sub = _repository.incomingMessages(conversationId).listen((msg) {
+    await _repository.markConversationRead(_convoId);
+
+    _subscribeToMessages();
+    _startPolling();
+  }
+
+  void _subscribeToMessages() {
+    _sub?.cancel();
+    _sub = _repository.incomingMessages(_convoId).listen((msg) {
       if (msg.id.isEmpty) return;
       if (state.messages.any((m) => m.id == msg.id)) return;
       emit(state.copyWith(messages: [...state.messages, msg]));
     });
+  }
+
+  void _startPolling() {
     _pollTimer?.cancel();
-    // REST fallback polling when realtime transport is unavailable.
     _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      final next = await _repository.getMessages(conversationId);
+      final next = await _repository.getMessages(_convoId);
       next.fold((_) {}, (messages) {
         if (messages.length != state.messages.length ||
             messages.map((m) => m.id).join() !=
@@ -74,7 +113,7 @@ class ChatCubit extends Cubit<ChatState> {
 
   Future<void> send(String text) async {
     if (text.trim().isEmpty) return;
-    final result = await _repository.sendMessage(conversationId, text.trim());
+    final result = await _repository.sendMessage(_convoId, text.trim());
     final msg = result.valueOrNull;
     if (msg != null) {
       if (msg.id.isNotEmpty && state.messages.any((m) => m.id == msg.id)) {
@@ -93,7 +132,7 @@ class ChatCubit extends Cubit<ChatState> {
       return upload.fold((f) => f.message, (_) => 'Upload failed');
     }
     final result = await _repository.sendMessage(
-      conversationId,
+      _convoId,
       '',
       attachmentUrl: url,
     );
@@ -146,7 +185,7 @@ class ChatCubit extends Cubit<ChatState> {
   Future<void> close() {
     _sub?.cancel();
     _pollTimer?.cancel();
-    _repository.leaveConversation(conversationId);
+    _repository.leaveConversation(_convoId);
     return super.close();
   }
 }
