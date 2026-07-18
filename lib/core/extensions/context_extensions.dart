@@ -51,4 +51,164 @@ extension ContextX on BuildContext {
       ),
     );
   }
+
+  void showTopSnack(String message, {bool isError = false}) {
+    if (message.trim().isEmpty) return;
+    _activeTopSnack?.remove();
+    _activeTopSnack = null;
+
+    final overlayState = Overlay.of(this);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => _TopSnackWidget(
+        message: message,
+        isError: isError,
+        onDismiss: () {
+          if (overlayEntry.mounted) {
+            overlayEntry.remove();
+            if (_activeTopSnack == overlayEntry) {
+              _activeTopSnack = null;
+            }
+          }
+        },
+      ),
+    );
+
+    _activeTopSnack = overlayEntry;
+    overlayState.insert(overlayEntry);
+  }
+}
+
+OverlayEntry? _activeTopSnack;
+
+class _TopSnackWidget extends StatefulWidget {
+  const _TopSnackWidget({
+    required this.message,
+    required this.isError,
+    required this.onDismiss,
+  });
+
+  final String message;
+  final bool isError;
+  final VoidCallback onDismiss;
+
+  @override
+  State<_TopSnackWidget> createState() => _TopSnackWidgetState();
+}
+
+class _TopSnackWidgetState extends State<_TopSnackWidget>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<Offset> _offsetAnimation;
+  late final Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+
+    _offsetAnimation = Tween<Offset>(
+      begin: const Offset(0, -1.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+
+    _opacityAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+
+    _controller.forward();
+
+    // Auto dismiss after 3 seconds
+    Future.delayed(const Duration(seconds: 3), _dismiss);
+  }
+
+  void _dismiss() {
+    if (mounted) {
+      _controller.reverse().then((_) {
+        widget.onDismiss();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final topPadding = MediaQuery.viewPaddingOf(context).top;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SlideTransition(
+        position: _offsetAnimation,
+        child: FadeTransition(
+          opacity: _opacityAnimation,
+          child: Padding(
+            padding: EdgeInsets.only(top: topPadding + 10, left: 16, right: 16),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: widget.isError
+                      ? const Color(0xFFD32F2F)
+                      : const Color(0xFF2E7D32),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      widget.isError
+                          ? Icons.error_outline_rounded
+                          : Icons.check_circle_outline_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        widget.message,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _dismiss,
+                      child: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white70,
+                        size: 18,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

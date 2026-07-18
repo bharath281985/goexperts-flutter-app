@@ -30,9 +30,14 @@ class FounderProfileLivePage extends StatefulWidget {
 }
 
 class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
-  final _name = TextEditingController();
-  final _location = TextEditingController();
+  final _email = TextEditingController();
+  final _fullName = TextEditingController();
   final _bio = TextEditingController();
+  final _phone = TextEditingController();
+  final _country = TextEditingController();
+  final _city = TextEditingController();
+
+  String? _avatarUrl;
   bool _loading = true;
   bool _saving = false;
 
@@ -44,42 +49,13 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
 
   @override
   void dispose() {
-    _name.dispose();
-    _location.dispose();
+    _email.dispose();
+    _fullName.dispose();
     _bio.dispose();
+    _phone.dispose();
+    _country.dispose();
+    _city.dispose();
     super.dispose();
-  }
-
-  String _pick(Map<String, dynamic> m, List<String> keys) {
-    for (final key in keys) {
-      final value = m[key];
-      if (value != null && value.toString().trim().isNotEmpty) {
-        return value.toString();
-      }
-    }
-    final user = m['user'];
-    if (user is Map) {
-      for (final key in keys) {
-        final value = user[key];
-        if (value != null && value.toString().trim().isNotEmpty) {
-          return value.toString();
-        }
-      }
-      // Nested user uses fullName / city instead of name / location.
-      if (keys.contains('name')) {
-        final fullName = user['fullName'];
-        if (fullName != null && fullName.toString().trim().isNotEmpty) {
-          return fullName.toString();
-        }
-      }
-      if (keys.contains('location')) {
-        final city = user['city'];
-        if (city != null && city.toString().trim().isNotEmpty) {
-          return city.toString();
-        }
-      }
-    }
-    return '';
   }
 
   Future<void> _load() async {
@@ -89,19 +65,53 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
     );
     if (!mounted) return;
     res.fold((f) => context.showSnack(f.message, isError: true), (m) {
-      _name.text = _pick(m, const ['name', 'fullName']);
-      _location.text = _pick(m, const ['location', 'city']);
-      _bio.text = _pick(m, const ['bio']);
+      final user = m['user'];
+      if (user is Map) {
+        _email.text = user['email']?.toString() ?? '';
+        _fullName.text = user['fullName']?.toString() ?? '';
+        _bio.text = user['bio']?.toString() ?? '';
+        _phone.text = user['phone']?.toString() ?? '';
+        _country.text = user['country']?.toString() ?? '';
+        _city.text = user['city']?.toString() ?? '';
+        _avatarUrl = user['avatarUrl']?.toString();
+      } else {
+        _email.text = m['email']?.toString() ?? '';
+        _fullName.text =
+            m['fullName']?.toString() ?? m['name']?.toString() ?? '';
+        _bio.text = m['bio']?.toString() ?? '';
+        _phone.text = m['phone']?.toString() ?? '';
+        _country.text = m['country']?.toString() ?? '';
+        _city.text = m['city']?.toString() ?? m['location']?.toString() ?? '';
+        _avatarUrl = m['avatarUrl']?.toString();
+      }
     });
     setState(() => _loading = false);
   }
 
-  Future<void> _save() async {
-    final name = _name.text.trim();
-    final location = _location.text.trim();
-    final bio = _bio.text.trim();
+  Future<void> _pickAvatar() async {
+    final picked = await FilePicker.platform.pickFiles(type: FileType.image);
+    final path = picked?.files.single.path;
+    if (path == null) return;
 
-    if (name.isEmpty) {
+    setState(() => _saving = true);
+    final res = await sl<FileUploadHelper>().uploadUrl(
+      path: path,
+      endpoint: ApiEndpoints.filesUpload,
+      fields: {'category': 'avatar'},
+    );
+    if (!mounted) return;
+    setState(() => _saving = false);
+
+    res.fold((f) => context.showSnack(f.message, isError: true), (url) {
+      setState(() => _avatarUrl = url);
+      context.showSnack('Logo uploaded successfully');
+    });
+  }
+
+  Future<void> _save() async {
+    final fullName = _fullName.text.trim();
+
+    if (fullName.isEmpty) {
       context.showSnack('Name is required', isError: true);
       return;
     }
@@ -109,7 +119,16 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
     setState(() => _saving = true);
     final res = await sl<ApiClientHelper>().putEnvelope<String>(
       ApiEndpoints.founderProfile,
-      body: {'name': name, 'fullName': name, 'location': location, 'bio': bio},
+      body: {
+        'fullName': fullName,
+        'name': fullName, // Keep for backward compatibility
+        'bio': _bio.text.trim(),
+        'phone': _phone.text.trim(),
+        'country': _country.text.trim(),
+        'city': _city.text.trim(),
+        'location': _city.text.trim(), // Keep for backward compatibility
+        if (_avatarUrl != null) 'avatarUrl': _avatarUrl,
+      },
       parser: (envelope) => envelope.message?.trim().isNotEmpty == true
           ? envelope.message!
           : 'Founder profile updated successfully',
@@ -127,12 +146,15 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
     if (currentUser != null) {
       context.read<AuthBloc>().add(
         AuthUserUpdated(
-          currentUser.copyWith(fullName: name, location: location),
+          currentUser.copyWith(
+            fullName: fullName,
+            location: _city.text.trim(),
+            avatarUrl: _avatarUrl,
+          ),
         ),
       );
     }
 
-    // Show toast after the frame so it isn't lost during rebuild.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.showSnack(message);
@@ -147,16 +169,71 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
         : ListView(
             padding: const EdgeInsets.all(AppSizes.screenPadding),
             children: [
+              Center(
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).disabledColor.withOpacity(0.1),
+                      backgroundImage:
+                          _avatarUrl != null && _avatarUrl!.isNotEmpty
+                          ? NetworkImage(_avatarUrl!)
+                          : null,
+                      child: _avatarUrl == null || _avatarUrl!.isEmpty
+                          ? const Icon(
+                              Icons.person,
+                              size: 50,
+                              color: Colors.grey,
+                            )
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: IconButton(
+                        style: IconButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.edit, size: 20),
+                        onPressed: _pickAvatar,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AppSizes.vGapXl,
               AppTextField(
-                controller: _name,
+                controller: _email,
+                label: 'Email',
+                hint: 'Email Address',
+                readOnly: true,
+              ),
+              AppSizes.vGapMd,
+              AppTextField(
+                controller: _fullName,
                 label: 'Name',
                 hint: 'Enter your name',
               ),
               AppSizes.vGapMd,
+              AppTextField(
+                controller: _phone,
+                label: 'Phone',
+                hint: 'Enter your phone number',
+              ),
+              AppSizes.vGapMd,
+              AppTextField(
+                controller: _country,
+                label: 'Country',
+                hint: 'Enter your country',
+              ),
+              AppSizes.vGapMd,
               AppLocationField(
-                controller: _location,
-                label: 'Location',
-                hint: 'Search and select your location',
+                controller: _city,
+                label: 'City',
+                hint: 'Search and select your city',
               ),
               AppSizes.vGapMd,
               AppTextField(
@@ -165,12 +242,13 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
                 hint: 'Enter your bio',
                 maxLines: 4,
               ),
-              AppSizes.vGapMd,
+              AppSizes.vGapXl,
               AppPrimaryButton(
                 label: 'Save',
                 isLoading: _saving,
                 onPressed: _save,
               ),
+              AppSizes.vGapXl,
             ],
           ),
   );

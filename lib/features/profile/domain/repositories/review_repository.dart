@@ -5,6 +5,7 @@ import '../entities/review.dart';
 abstract class ReviewRepository {
   Future<Result<Paginated<Review>>> getReviews(QueryParams params);
   Future<Result<Review>> getReview(String id);
+  Future<Result<Map<String, dynamic>>> getReviewsAverage();
   Future<Result<bool>> submitReview({
     required double rating,
     required String comment,

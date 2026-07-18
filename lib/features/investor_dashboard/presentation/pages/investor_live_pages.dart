@@ -20,10 +20,15 @@ class InvestorProfilePage extends StatefulWidget {
 }
 
 class _InvestorProfilePageState extends State<InvestorProfilePage> {
-  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _fullName = TextEditingController();
   final _company = TextEditingController();
-  final _location = TextEditingController();
+  final _phone = TextEditingController();
+  final _country = TextEditingController();
+  final _city = TextEditingController();
   final _bio = TextEditingController();
+
+  String? _avatarUrl;
   bool _loading = true;
   bool _saving = false;
   bool _verified = false;
@@ -36,9 +41,12 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
 
   @override
   void dispose() {
-    _name.dispose();
+    _email.dispose();
+    _fullName.dispose();
     _company.dispose();
-    _location.dispose();
+    _phone.dispose();
+    _country.dispose();
+    _city.dispose();
     _bio.dispose();
     super.dispose();
   }
@@ -51,23 +59,20 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
     if (!mounted) return;
     res.fold((f) => context.showSnack(f.message), (m) {
       final user = m['user'] as Map<String, dynamic>? ?? {};
-      _name.text = m['name']?.toString() ?? user['fullName']?.toString() ?? '';
+      _email.text = user['email']?.toString() ?? m['email']?.toString() ?? '';
+      _fullName.text =
+          user['fullName']?.toString() ?? m['name']?.toString() ?? '';
       _company.text = m['company']?.toString() ?? m['firm']?.toString() ?? '';
+      _phone.text = user['phone']?.toString() ?? m['phone']?.toString() ?? '';
+      _country.text =
+          user['country']?.toString() ?? m['country']?.toString() ?? '';
 
       final city = user['city']?.toString();
-      final country = user['country']?.toString();
-      String loc = m['location']?.toString() ?? '';
-      if (loc.isEmpty) {
-        if (city != null && country != null) {
-          loc = '$city, $country';
-        } else if (city != null) {
-          loc = city;
-        } else if (country != null) {
-          loc = country;
-        }
-      }
-      _location.text = loc;
+      final location = m['location']?.toString();
+      _city.text = city ?? location ?? '';
+
       _bio.text = m['bio']?.toString() ?? user['bio']?.toString() ?? '';
+      _avatarUrl = user['avatarUrl']?.toString() ?? m['avatarUrl']?.toString();
       _verified =
           m['isVerified'] as bool? ??
           m['verified'] as bool? ??
@@ -78,40 +83,56 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
   }
 
   Future<void> _save() async {
+    final fullName = _fullName.text.trim();
+
+    if (fullName.isEmpty) {
+      context.showSnack('Name is required', isError: true);
+      return;
+    }
+
     setState(() => _saving = true);
     final res = await sl<ApiClientHelper>().put<Map<String, dynamic>>(
       ApiEndpoints.investorProfile,
       body: {
-        'name': _name.text.trim(),
-        'fullName': _name.text.trim(),
+        'name': fullName,
+        'fullName': fullName,
         'company': _company.text.trim(),
         'firm': _company.text.trim(),
-        'location': _location.text.trim(),
+        'phone': _phone.text.trim(),
+        'country': _country.text.trim(),
+        'city': _city.text.trim(),
+        'location': _city.text.trim(),
         'bio': _bio.text.trim(),
+        if (_avatarUrl != null) 'avatarUrl': _avatarUrl,
       },
       parser: (raw) => Map<String, dynamic>.from(raw as Map),
     );
     if (!mounted) return;
     setState(() => _saving = false);
     res.fold(
-      (f) => context.showSnack(f.message),
+      (f) => context.showSnack(f.message, isError: true),
       (_) => context.showSnack('Investor profile updated'),
     );
   }
 
-  Future<void> _uploadAvatar() async {
-    final picked = await FilePicker.platform.pickFiles(allowMultiple: false);
+  Future<void> _pickAvatar() async {
+    final picked = await FilePicker.platform.pickFiles(type: FileType.image);
     final path = picked?.files.single.path;
     if (path == null) return;
+
+    setState(() => _saving = true);
     final res = await sl<FileUploadHelper>().uploadUrl(
       path: path,
-      endpoint: ApiEndpoints.investorProfileAvatar,
+      endpoint: ApiEndpoints.filesUpload,
+      fields: {'category': 'avatar'},
     );
     if (!mounted) return;
-    res.fold(
-      (f) => context.showSnack(f.message),
-      (_) => context.showSnack('Avatar uploaded'),
-    );
+    setState(() => _saving = false);
+
+    res.fold((f) => context.showSnack(f.message, isError: true), (url) {
+      setState(() => _avatarUrl = url);
+      context.showSnack('Logo uploaded successfully');
+    });
   }
 
   Future<void> _uploadDoc() async {
@@ -161,9 +182,52 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
                     ],
                   ),
                 ),
+                AppSizes.vGapXl,
+                Center(
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).disabledColor.withOpacity(0.1),
+                        backgroundImage:
+                            _avatarUrl != null && _avatarUrl!.isNotEmpty
+                            ? NetworkImage(_avatarUrl!)
+                            : null,
+                        child: _avatarUrl == null || _avatarUrl!.isEmpty
+                            ? const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Colors.grey,
+                              )
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: IconButton(
+                          style: IconButton.styleFrom(
+                            backgroundColor: Theme.of(context).primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: _pickAvatar,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                AppSizes.vGapXl,
+                AppTextField(
+                  controller: _email,
+                  label: 'Email',
+                  hint: 'Email Address',
+                  readOnly: true,
+                ),
                 AppSizes.vGapMd,
                 AppTextField(
-                  controller: _name,
+                  controller: _fullName,
                   label: 'Name',
                   hint: 'Enter your name',
                 ),
@@ -174,10 +238,22 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
                   hint: 'Enter company name',
                 ),
                 AppSizes.vGapMd,
+                AppTextField(
+                  controller: _phone,
+                  label: 'Phone',
+                  hint: 'Enter your phone number',
+                ),
+                AppSizes.vGapMd,
+                AppTextField(
+                  controller: _country,
+                  label: 'Country',
+                  hint: 'Enter your country',
+                ),
+                AppSizes.vGapMd,
                 AppLocationField(
-                  controller: _location,
-                  label: 'Location',
-                  hint: 'Search and select your location',
+                  controller: _city,
+                  label: 'City',
+                  hint: 'Search and select your city',
                 ),
                 AppSizes.vGapMd,
                 AppTextField(
@@ -187,22 +263,9 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
                   maxLines: 3,
                 ),
                 AppSizes.vGapLg,
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppPrimaryButton(
-                        label: 'Upload Avatar',
-                        onPressed: _uploadAvatar,
-                      ),
-                    ),
-                    AppSizes.hGapMd,
-                    Expanded(
-                      child: AppPrimaryButton(
-                        label: 'Upload Document',
-                        onPressed: _uploadDoc,
-                      ),
-                    ),
-                  ],
+                AppPrimaryButton(
+                  label: 'Upload Document',
+                  onPressed: _uploadDoc,
                 ),
                 AppSizes.vGapMd,
                 AppPrimaryButton(
@@ -210,13 +273,14 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
                   isLoading: _saving,
                   onPressed: _save,
                 ),
+                AppSizes.vGapXl,
               ],
             ),
     );
   }
 
   int _completion() {
-    final values = [_name.text, _company.text, _location.text, _bio.text];
+    final values = [_fullName.text, _company.text, _city.text, _bio.text];
     final filled = values.where((e) => e.trim().isNotEmpty).length;
     return ((filled / 4) * 100).round();
   }

@@ -20,11 +20,14 @@ class ReviewRepositoryImpl implements ReviewRepository {
     if (_api == null) return _apiNotConfigured();
 
     final role = await _tokenRoleHelper?.resolve();
-    final path = (role == UserRole.freelancer)
-        ? ApiEndpoints.freelancerReviews
+    final prefix = (role == UserRole.freelancer)
+        ? 'freelancer'
         : (role == UserRole.client)
-        ? ApiEndpoints.clientReviews
-        : ApiEndpoints.reviews;
+        ? 'client'
+        : (role == UserRole.investor)
+        ? 'investor'
+        : 'founder';
+    final path = '/$prefix/reviews';
 
     return _api.getEnvelope<Paginated<Review>>(
       path,
@@ -42,14 +45,38 @@ class ReviewRepositoryImpl implements ReviewRepository {
   Future<Result<Review>> getReview(String id) async {
     if (_api == null) return _apiNotConfigured();
 
-    // Freelancer API doesn't expose `GET /reviews/:id` per backend matrix.
-    // We retrieve the first page and pick the matching review.
     final list = await getReviews(const QueryParams(page: 1, pageSize: 100));
     return list.fold((failure) => Err(failure), (page) {
       final match = page.items.where((r) => r.id == id);
       if (match.isEmpty) return const Err(NotFoundFailure());
       return Success(match.first);
     });
+  }
+
+  @override
+  Future<Result<Map<String, dynamic>>> getReviewsAverage() async {
+    if (_api == null) return _apiNotConfigured();
+
+    final role = await _tokenRoleHelper?.resolve();
+    final prefix = (role == UserRole.freelancer)
+        ? 'freelancer'
+        : (role == UserRole.client)
+        ? 'client'
+        : (role == UserRole.investor)
+        ? 'investor'
+        : 'founder';
+    final path = '/$prefix/reviews/average';
+
+    return _api.getEnvelope<Map<String, dynamic>>(
+      path,
+      parser: (envelope) {
+        final data = envelope.data;
+        if (data is Map<String, dynamic>) {
+          return data;
+        }
+        return {};
+      },
+    );
   }
 
   @override

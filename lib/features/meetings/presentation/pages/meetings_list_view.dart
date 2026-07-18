@@ -1,4 +1,6 @@
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../../app/router/route_names.dart';
@@ -6,6 +8,9 @@ import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/catalog_view.dart';
 import '../../../../core/utils/enums.dart';
 import '../../../../core/utils/paginated.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../investor_dashboard/domain/entities/investor.dart';
+import '../../../investor_dashboard/domain/repositories/investor_repository.dart';
 import '../../../startup_ideas/domain/entities/startup.dart';
 import '../../../startup_ideas/domain/repositories/startup_repository.dart';
 import '../../domain/entities/meeting.dart';
@@ -77,14 +82,22 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
   bool _isVideo = true;
   bool _loading = false;
 
+  bool _isFounder = false;
   List<Startup> _startups = [];
-  bool _loadingStartups = true;
-  String? _selectedFounderId;
+  List<Investor> _investors = [];
+  bool _loadingData = true;
+  String? _selectedParticipantId;
 
   @override
   void initState() {
     super.initState();
-    _loadStartups();
+    final user = context.read<AuthBloc>().state.user;
+    _isFounder = user?.role == UserRole.founder;
+    if (_isFounder) {
+      _loadInvestors();
+    } else {
+      _loadStartups();
+    }
   }
 
   Future<void> _loadStartups() async {
@@ -95,13 +108,33 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
       if (mounted) {
         setState(() {
           _startups = res.valueOrNull?.items ?? [];
-          _loadingStartups = false;
+          _loadingData = false;
         });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _loadingStartups = false;
+          _loadingData = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadInvestors() async {
+    try {
+      final res = await sl<InvestorRepository>().getInvestors(
+        const QueryParams(pageSize: 50),
+      );
+      if (mounted) {
+        setState(() {
+          _investors = res.valueOrNull?.items ?? [];
+          _loadingData = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loadingData = false;
         });
       }
     }
@@ -130,8 +163,13 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
   }
 
   Future<void> _submit() async {
-    if (_selectedFounderId == null) {
-      context.showSnack('Please select a startup/founder', isError: true);
+    if (_selectedParticipantId == null) {
+      context.showSnack(
+        _isFounder
+            ? 'Please select an investor'
+            : 'Please select a startup/founder',
+        isError: true,
+      );
       return;
     }
     if (_selectedDate == null || _selectedTime == null) {
@@ -160,7 +198,7 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
       isVideo: _isVideo,
       meetingLink: '',
       agenda: 'Expert Consultation',
-      participants: [_selectedFounderId!],
+      participants: [_selectedParticipantId!],
     );
 
     final res = await sl<MeetingRepository>().schedule(meeting);
@@ -210,18 +248,20 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            if (_loadingStartups)
+            if (_loadingData)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
                   child: CircularProgressIndicator(),
                 ),
               )
-            else if (_startups.isEmpty)
+            else if (_isFounder ? _investors.isEmpty : _startups.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Text(
-                  'No active startups found to schedule meeting with.',
+                  _isFounder
+                      ? 'No active investors found to schedule meeting with.'
+                      : 'No active startups found to schedule meeting with.',
                   textAlign: TextAlign.center,
                   style: Theme.of(
                     context,
@@ -230,19 +270,31 @@ class _ScheduleMeetingSheetState extends State<_ScheduleMeetingSheet> {
               )
             else
               DropdownButtonFormField<String>(
-                value: _selectedFounderId,
-                decoration: const InputDecoration(
-                  labelText: 'Select Startup / Founder',
-                  border: OutlineInputBorder(),
+                value: _selectedParticipantId,
+                decoration: InputDecoration(
+                  labelText: _isFounder
+                      ? 'Select Investor'
+                      : 'Select Startup / Founder',
+                  border: const OutlineInputBorder(),
                 ),
-                items: _startups.map((s) {
-                  return DropdownMenuItem<String>(
-                    value: s.founderId,
-                    child: Text('${s.name} (${s.founderName})'),
-                  );
-                }).toList(),
+                items: _isFounder
+                    ? _investors.map((i) {
+                        final displayCompany = i.company.isNotEmpty
+                            ? ' (${i.company})'
+                            : '';
+                        return DropdownMenuItem<String>(
+                          value: i.id,
+                          child: Text('${i.name}$displayCompany'),
+                        );
+                      }).toList()
+                    : _startups.map((s) {
+                        return DropdownMenuItem<String>(
+                          value: s.founderId,
+                          child: Text('${s.name} (${s.founderName})'),
+                        );
+                      }).toList(),
                 onChanged: (val) {
-                  setState(() => _selectedFounderId = val);
+                  setState(() => _selectedParticipantId = val);
                 },
               ),
             const SizedBox(height: 16),

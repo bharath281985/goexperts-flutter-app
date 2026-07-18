@@ -171,7 +171,6 @@ class MessageRepositoryImpl implements MessageRepository {
     return _api.post<ChatMessage>(
       path,
       body: <String, dynamic>{
-        
         'conversationId': conversationId,
 
         'text': text.trim(),

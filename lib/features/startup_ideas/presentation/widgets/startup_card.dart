@@ -53,7 +53,7 @@ class AppStartupCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _TitleBlock(startup: startup),
-                  AppSizes.vGapLg,
+                 
                   _CategoryChips(startup: startup),
                   AppSizes.vGapXl,
                   _FundingProgress(startup: startup),
@@ -94,7 +94,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 176,
+      height: 120,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -118,7 +118,7 @@ class _Header extends StatelessWidget {
             top: -80,
             child: Container(
               width: 310,
-              height: 190,
+              height: 150,
               decoration: BoxDecoration(
                 color: AppColors.startupHeaderHighlight,
                 borderRadius: BorderRadius.circular(160),

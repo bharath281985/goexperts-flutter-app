@@ -328,7 +328,7 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                 ),
                 AppSizes.vGapLg,
                 AppCard(
-                  onTap: () => context.push('${Routes.publicFounder}/fo1'),
+                  onTap: () => context.push('${Routes.publicFounder}/${s.founderId}'),
                   child: Row(
                     children: [
                       AppAvatar(
@@ -368,17 +368,41 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                   Text(s.solution, style: context.text.bodyMedium),
                 ],
                 AppSizes.vGapLg,
-                const AppSectionHeader(title: 'Business Details'),
-                AppSizes.vGapSm,
-                _detail(context, 'Business Model', s.businessModel),
-                _detail(context, 'Revenue Model', s.revenueModel),
-                _detail(context, 'Market Size', s.marketSize),
-                AppSizes.vGapLg,
-                const AppSectionHeader(title: 'Documents'),
-                AppSizes.vGapSm,
-                _doc(context, 'Pitch Deck.pdf', Icons.slideshow_outlined),
-                _doc(context, 'Business Plan.pdf', Icons.description_outlined),
-                _doc(context, 'Financials.xlsx', Icons.table_chart_outlined),
+                if (s.businessModel.isNotEmpty ||
+                    s.revenueModel.isNotEmpty ||
+                    s.marketSize.isNotEmpty) ...[
+                  AppSizes.vGapLg,
+                  const AppSectionHeader(title: 'Business Details'),
+                  AppSizes.vGapSm,
+                  if (s.businessModel.isNotEmpty)
+                    _detail(context, 'Business Model', s.businessModel),
+                  if (s.revenueModel.isNotEmpty)
+                    _detail(context, 'Revenue Model', s.revenueModel),
+                  if (s.marketSize.isNotEmpty)
+                    _detail(context, 'Market Size', s.marketSize),
+                ],
+                if ((s.pitchDeckUrl != null && s.pitchDeckUrl!.isNotEmpty) ||
+                    (s.businessPlanUrl != null &&
+                        s.businessPlanUrl!.isNotEmpty)) ...[
+                  AppSizes.vGapLg,
+                  const AppSectionHeader(title: 'Documents'),
+                  AppSizes.vGapSm,
+                  if (s.pitchDeckUrl != null && s.pitchDeckUrl!.isNotEmpty)
+                    _doc(
+                      context,
+                      'Pitch Deck (pitch Disk)',
+                      Icons.slideshow_outlined,
+                      s.pitchDeckUrl!,
+                    ),
+                  if (s.businessPlanUrl != null &&
+                      s.businessPlanUrl!.isNotEmpty)
+                    _doc(
+                      context,
+                      'Business Plan (Businessplan)',
+                      Icons.description_outlined,
+                      s.businessPlanUrl!,
+                    ),
+                ],
                 const SizedBox(height: 90),
               ],
             ),
@@ -430,10 +454,17 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
     ),
   );
 
-  Widget _doc(BuildContext context, String name, IconData icon) => AppCard(
+  Widget _doc(
+    BuildContext context,
+    String name,
+    IconData icon,
+    String url,
+  ) => AppCard(
     margin: const EdgeInsets.only(bottom: AppSizes.sm),
     padding: const EdgeInsets.all(AppSizes.md),
-    onTap: () => context.showSnack('Opening $name'),
+    onTap: () => context.push(
+      '${Routes.documentViewer}?url=${Uri.encodeComponent(url)}&name=${Uri.encodeComponent(name)}',
+    ),
     child: Row(
       children: [
         Icon(icon, color: AppColors.primary),

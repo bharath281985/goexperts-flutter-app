@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 import '../../../../app/constants/app_colors.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../../app/router/route_names.dart';
@@ -26,10 +27,11 @@ class StartupsListView extends StatelessWidget {
   final bool? isFounderOverride;
 
   Future<void> _createIdea(BuildContext context) async {
-    final data = await showDialog<Map<String, dynamic>>(
+    final data = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => _CreateIdeaDialog(),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const _CreateIdeaBottomSheet(),
     );
 
     if (data == null) return;
@@ -47,8 +49,8 @@ class StartupsListView extends StatelessWidget {
     if (!context.mounted) return;
     Navigator.pop(context); // Dismiss loading spinner
 
-    res.fold((f) => context.showSnack(f.message, isError: true), (idea) {
-      context.showSnack('Startup idea created successfully!');
+    res.fold((f) => context.showTopSnack(f.message, isError: true), (idea) {
+      context.showTopSnack('Startup idea created successfully!');
       context.read<ListBloc<Startup>>().add(const ListRefreshed());
     });
   }
@@ -58,9 +60,11 @@ class StartupsListView extends StatelessWidget {
     Startup startup,
     ListBloc<Startup> bloc,
   ) async {
-    final data = await showDialog<Map<String, dynamic>>(
+    final data = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => _EditIdeaDialog(startup: startup),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _EditIdeaBottomSheet(startup: startup),
     );
 
     if (data == null) return;
@@ -78,8 +82,10 @@ class StartupsListView extends StatelessWidget {
     if (!context.mounted) return;
     Navigator.pop(context); // Dismiss loading spinner
 
-    res.fold((f) => context.showSnack(f.message, isError: true), (updatedIdea) {
-      context.showSnack('Startup idea updated successfully!');
+    res.fold((f) => context.showTopSnack(f.message, isError: true), (
+      updatedIdea,
+    ) {
+      context.showTopSnack('Startup idea updated successfully!');
       bloc.add(const ListRefreshed());
     });
   }
@@ -127,9 +133,9 @@ class StartupsListView extends StatelessWidget {
     if (!context.mounted) return;
     Navigator.pop(context); // Dismiss loading spinner
 
-    res.fold((f) => context.showSnack(f.message, isError: true), (success) {
+    res.fold((f) => context.showTopSnack(f.message, isError: true), (success) {
       if (success) {
-        context.showSnack('Startup idea deleted successfully');
+        context.showTopSnack('Startup idea deleted successfully');
         bloc.add(const ListRefreshed());
       }
     });
@@ -200,22 +206,25 @@ class StartupsListView extends StatelessWidget {
               ? null
               : () async {
                   final res = await repo.toggleSave(s.founderId!);
-                  res.fold((f) => context.showSnack(f.message), (success) {
-                    if (success) {
-                      final updated = s.copyWith(isSaved: !s.isSaved);
-                      bloc.add(
-                        ListItemUpdated(
-                          updated,
-                          (existing, newItem) => existing.id == newItem.id,
-                        ),
-                      );
-                      context.showSnack(
-                        updated.isSaved
-                            ? 'Saved startup'
-                            : 'Removed from saved',
-                      );
-                    }
-                  });
+                  res.fold(
+                    (f) => context.showTopSnack(f.message, isError: true),
+                    (success) {
+                      if (success) {
+                        final updated = s.copyWith(isSaved: !s.isSaved);
+                        bloc.add(
+                          ListItemUpdated(
+                            updated,
+                            (existing, newItem) => existing.id == newItem.id,
+                          ),
+                        );
+                        context.showTopSnack(
+                          updated.isSaved
+                              ? 'Saved startup'
+                              : 'Removed from saved',
+                        );
+                      }
+                    },
+                  );
                 },
           onInterest: isFounder
               ? null
@@ -246,18 +255,23 @@ class StartupsListView extends StatelessWidget {
                     if (confirm != true) return;
 
                     final res = await repo.withdrawInterest(s.id);
-                    res.fold((f) => context.showSnack(f.message), (success) {
-                      if (success) {
-                        final updated = s.copyWith(hasInvested: false);
-                        bloc.add(
-                          ListItemUpdated(
-                            updated,
-                            (existing, newItem) => existing.id == newItem.id,
-                          ),
-                        );
-                        context.showSnack('Withdrew interest successfully');
-                      }
-                    });
+                    res.fold(
+                      (f) => context.showTopSnack(f.message, isError: true),
+                      (success) {
+                        if (success) {
+                          final updated = s.copyWith(hasInvested: false);
+                          bloc.add(
+                            ListItemUpdated(
+                              updated,
+                              (existing, newItem) => existing.id == newItem.id,
+                            ),
+                          );
+                          context.showTopSnack(
+                            'Withdrew interest successfully',
+                          );
+                        }
+                      },
+                    );
                   } else {
                     context.push(
                       '${Routes.apply}?type=Investment&name=${Uri.encodeComponent(s.name)}&projectId=${s.id}',
@@ -272,12 +286,14 @@ class StartupsListView extends StatelessWidget {
   }
 }
 
-class _CreateIdeaDialog extends StatefulWidget {
+class _CreateIdeaBottomSheet extends StatefulWidget {
+  const _CreateIdeaBottomSheet();
+
   @override
-  State<_CreateIdeaDialog> createState() => _CreateIdeaDialogState();
+  State<_CreateIdeaBottomSheet> createState() => _CreateIdeaBottomSheetState();
 }
 
-class _CreateIdeaDialogState extends State<_CreateIdeaDialog> {
+class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _industryController = TextEditingController();
@@ -288,6 +304,8 @@ class _CreateIdeaDialogState extends State<_CreateIdeaDialog> {
   String? _stage = 'MVP';
   String? _localLogoPath;
   String? _localCoverPath;
+  String? _localPitchDiskPath;
+  String? _localBusinessPlanPath;
   bool _loading = false;
 
   @override
@@ -310,7 +328,7 @@ class _CreateIdeaDialogState extends State<_CreateIdeaDialog> {
       }
     } catch (e) {
       if (mounted) {
-        context.showSnack('Failed to pick logo: $e', isError: true);
+        context.showTopSnack('Failed to pick logo: $e', isError: true);
       }
     }
   }
@@ -325,7 +343,43 @@ class _CreateIdeaDialogState extends State<_CreateIdeaDialog> {
       }
     } catch (e) {
       if (mounted) {
-        context.showSnack('Failed to pick cover: $e', isError: true);
+        context.showTopSnack('Failed to pick cover: $e', isError: true);
+      }
+    }
+  }
+
+  Future<void> _pickPitchDisk() async {
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'ppt', 'pptx'],
+      );
+      if (picked != null && picked.files.single.path != null) {
+        setState(() {
+          _localPitchDiskPath = picked.files.single.path;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showTopSnack('Failed to pick Pitch Deck: $e', isError: true);
+      }
+    }
+  }
+
+  Future<void> _pickBusinessPlan() async {
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'ppt', 'pptx'],
+      );
+      if (picked != null && picked.files.single.path != null) {
+        setState(() {
+          _localBusinessPlanPath = picked.files.single.path;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showTopSnack('Failed to pick Business Plan: $e', isError: true);
       }
     }
   }
@@ -433,204 +487,360 @@ class _CreateIdeaDialogState extends State<_CreateIdeaDialog> {
     );
   }
 
+  Widget _buildDocPickerItem({
+    required String label,
+    required String? localPath,
+    required VoidCallback onPick,
+    required VoidCallback onRemove,
+  }) {
+    if (localPath != null) {
+      final fileName = p.basename(localPath);
+      return Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.description_outlined,
+              color: AppColors.primary,
+              size: 28,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  Text(
+                    fileName,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              onPressed: onPick,
+              tooltip: 'Change',
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.danger,
+                size: 20,
+              ),
+              onPressed: onRemove,
+              tooltip: 'Remove',
+            ),
+          ],
+        ),
+      );
+    }
+
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 38),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+      ),
+      onPressed: onPick,
+      icon: const Icon(Icons.upload_file_outlined, size: 18),
+      label: Text('Upload $label'),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final formContent = Form(
-      key: _formKey,
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildImagePickerItem(
-              label: 'Logo',
-              localPath: _localLogoPath,
-              onPick: _pickLogo,
-              onRemove: () => setState(() => _localLogoPath = null),
-            ),
-            const SizedBox(height: 12),
-            _buildImagePickerItem(
-              label: 'Cover Image',
-              localPath: _localCoverPath,
-              onPick: _pickCover,
-              onRemove: () => setState(() => _localCoverPath = null),
-            ),
-            const SizedBox(height: 12),
-            AppTextField(
-              controller: _nameController,
-              label: 'Startup Name',
-              hint: 'e.g. HealthBridge AI',
-              validator: (v) => v?.trim().isEmpty == true ? 'Required' : null,
-            ),
-            const SizedBox(height: 12),
-            AppTextField(
-              controller: _industryController,
-              label: 'Industry',
-              hint: 'e.g. Healthcare',
-              validator: (v) => v?.trim().isEmpty == true ? 'Required' : null,
-            ),
-            const SizedBox(height: 12),
-            AppTextField(
-              controller: _categoryController,
-              label: 'Category',
-              hint: 'e.g. Artificial Intelligence',
-              validator: (v) => v?.trim().isEmpty == true ? 'Required' : null,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _stage,
-              decoration: const InputDecoration(
-                labelText: 'Stage',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'Idea Stage',
-                  child: Text('Idea Stage'),
-                ),
-                DropdownMenuItem(value: 'Prototype', child: Text('Prototype')),
-                DropdownMenuItem(value: 'MVP', child: Text('MVP')),
-                DropdownMenuItem(
-                  value: 'Early Revenue',
-                  child: Text('Early Revenue'),
-                ),
-                DropdownMenuItem(
-                  value: 'Early Traction',
-                  child: Text('Early Traction'),
-                ),
-                DropdownMenuItem(value: 'Growth', child: Text('Growth')),
-                DropdownMenuItem(value: 'Expansion', child: Text('Expansion')),
-              ],
-              onChanged: (val) => setState(() => _stage = val),
-              validator: (v) => v == null ? 'Required' : null,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: AppTextField(
-                    controller: _fundingController,
-                    label: 'Funding Ask',
-                    hint: 'e.g. 15000',
-                    keyboardType: TextInputType.number,
-                    validator: (v) =>
-                        double.tryParse(v ?? '') == null ? 'Invalid' : null,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AppTextField(
-                    controller: _equityController,
-                    label: 'Equity (%)',
-                    hint: 'e.g. 5',
-                    keyboardType: TextInputType.number,
-                    validator: (v) {
-                      final eq = double.tryParse(v ?? '');
-                      if (eq == null || eq < 0 || eq > 100) return 'Invalid';
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-    );
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 10,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Stack(
+        children: [
+          Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 20, top: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(2.5),
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    'Create Startup Idea',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildImagePickerItem(
+                    label: 'Logo',
+                    localPath: _localLogoPath,
+                    onPick: _pickLogo,
+                    onRemove: () => setState(() => _localLogoPath = null),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildImagePickerItem(
+                    label: 'Cover Image',
+                    localPath: _localCoverPath,
+                    onPick: _pickCover,
+                    onRemove: () => setState(() => _localCoverPath = null),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDocPickerItem(
+                    label: 'Pitch Deck (pitch Disk)',
+                    localPath: _localPitchDiskPath,
+                    onPick: _pickPitchDisk,
+                    onRemove: () => setState(() => _localPitchDiskPath = null),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDocPickerItem(
+                    label: 'Business Plan (Businessplan)',
+                    localPath: _localBusinessPlanPath,
+                    onPick: _pickBusinessPlan,
+                    onRemove: () =>
+                        setState(() => _localBusinessPlanPath = null),
+                  ),
+                  const SizedBox(height: 12),
+                  AppTextField(
+                    controller: _nameController,
+                    label: 'Startup Name',
+                    hint: 'e.g. HealthBridge AI',
+                    validator: (v) =>
+                        v?.trim().isEmpty == true ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  AppTextField(
+                    controller: _industryController,
+                    label: 'Industry',
+                    hint: 'e.g. Healthcare',
+                    validator: (v) =>
+                        v?.trim().isEmpty == true ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  AppTextField(
+                    controller: _categoryController,
+                    label: 'Category',
+                    hint: 'e.g. Artificial Intelligence',
+                    validator: (v) =>
+                        v?.trim().isEmpty == true ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: _stage,
+                    decoration: const InputDecoration(
+                      labelText: 'Stage',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Idea Stage',
+                        child: Text('Idea Stage'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Prototype',
+                        child: Text('Prototype'),
+                      ),
+                      DropdownMenuItem(value: 'MVP', child: Text('MVP')),
+                      DropdownMenuItem(
+                        value: 'Early Revenue',
+                        child: Text('Early Revenue'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Early Traction',
+                        child: Text('Early Traction'),
+                      ),
+                      DropdownMenuItem(value: 'Growth', child: Text('Growth')),
+                      DropdownMenuItem(
+                        value: 'Expansion',
+                        child: Text('Expansion'),
+                      ),
+                    ],
+                    onChanged: (val) => setState(() => _stage = val),
+                    validator: (v) => v == null ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppTextField(
+                          controller: _fundingController,
+                          label: 'Funding Ask',
+                          hint: 'e.g. 15000',
+                          keyboardType: TextInputType.number,
+                          validator: (v) => double.tryParse(v ?? '') == null
+                              ? 'Invalid'
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppTextField(
+                          controller: _equityController,
+                          label: 'Equity (%)',
+                          hint: 'e.g. 5',
+                          keyboardType: TextInputType.number,
+                          validator: (v) {
+                            final eq = double.tryParse(v ?? '');
+                            if (eq == null || eq < 0 || eq > 100)
+                              return 'Invalid';
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(80, 44),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(100, 44),
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                        ),
+                        onPressed: _loading
+                            ? null
+                            : () async {
+                                if (!_formKey.currentState!.validate()) return;
+                                setState(() => _loading = true);
 
-    return Stack(
-      children: [
-        AlertDialog(
-          title: const Text('Create Startup Idea'),
-          content: Container(
-            width: double.maxFinite,
-            constraints: const BoxConstraints(maxWidth: 450),
-            child: formContent,
+                                String? logoUrl;
+                                String? coverUrl;
+                                String? pitchDiskUrl;
+                                String? businessPlanUrl;
+
+                                final uploadHelper = sl<FileUploadHelper>();
+                                if (_localLogoPath != null) {
+                                  final res = await uploadHelper.uploadUrl(
+                                    path: _localLogoPath!,
+                                    endpoint: ApiEndpoints.filesUpload,
+                                    fields: {'category': 'startup_logo'},
+                                  );
+                                  res.fold((_) {}, (url) => logoUrl = url);
+                                }
+
+                                if (_localCoverPath != null) {
+                                  final res = await uploadHelper.uploadUrl(
+                                    path: _localCoverPath!,
+                                    endpoint: ApiEndpoints.filesUpload,
+                                    fields: {'category': 'startup_cover'},
+                                  );
+                                  res.fold((_) {}, (url) => coverUrl = url);
+                                }
+
+                                if (_localPitchDiskPath != null) {
+                                  final res = await uploadHelper.uploadUrl(
+                                    path: _localPitchDiskPath!,
+                                    endpoint: ApiEndpoints.filesUpload,
+                                    fields: {'category': 'startup_pitch_deck'},
+                                  );
+                                  res.fold((_) {}, (url) => pitchDiskUrl = url);
+                                }
+
+                                if (_localBusinessPlanPath != null) {
+                                  final res = await uploadHelper.uploadUrl(
+                                    path: _localBusinessPlanPath!,
+                                    endpoint: ApiEndpoints.filesUpload,
+                                    fields: {
+                                      'category': 'startup_business_plan',
+                                    },
+                                  );
+                                  res.fold(
+                                    (_) {},
+                                    (url) => businessPlanUrl = url,
+                                  );
+                                }
+
+                                if (!mounted) return;
+                                Navigator.pop(context, {
+                                  'logo': logoUrl ?? '',
+                                  'coverimage': coverUrl ?? '',
+                                  'pitchDisk': pitchDiskUrl ?? '',
+                                  'Businessplan': businessPlanUrl ?? '',
+                                  'pitchDeckUrl': pitchDiskUrl ?? '',
+                                  'businessPlanUrl': businessPlanUrl ?? '',
+                                  'startup': _nameController.text.trim(),
+                                  'industry': _industryController.text.trim(),
+                                  'category': _categoryController.text.trim(),
+                                  'stage': _stage,
+                                  'funding':
+                                      double.tryParse(
+                                        _fundingController.text.trim(),
+                                      ) ??
+                                      0.0,
+                                  'equity':
+                                      double.tryParse(
+                                        _equityController.text.trim(),
+                                      ) ??
+                                      0.0,
+                                });
+                              },
+                        child: const Text('Create'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-          actions: [
-            TextButton(
-              style: TextButton.styleFrom(
-                minimumSize: const Size(80, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-              ),
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(80, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-              ),
-              onPressed: _loading
-                  ? null
-                  : () async {
-                      if (!_formKey.currentState!.validate()) return;
-                      setState(() => _loading = true);
-
-                      String? logoUrl;
-                      String? coverUrl;
-
-                      final uploadHelper = sl<FileUploadHelper>();
-                      if (_localLogoPath != null) {
-                        final res = await uploadHelper.uploadUrl(
-                          path: _localLogoPath!,
-                          endpoint: ApiEndpoints.filesUpload,
-                          fields: {'category': 'startup_logo'},
-                        );
-                        res.fold((_) {}, (url) => logoUrl = url);
-                      }
-
-                      if (_localCoverPath != null) {
-                        final res = await uploadHelper.uploadUrl(
-                          path: _localCoverPath!,
-                          endpoint: ApiEndpoints.filesUpload,
-                          fields: {'category': 'startup_cover'},
-                        );
-                        res.fold((_) {}, (url) => coverUrl = url);
-                      }
-
-                      if (!mounted) return;
-                      Navigator.pop(context, {
-                        'logo': logoUrl ?? '',
-                        'coverimage': coverUrl ?? '',
-                        'startup': _nameController.text.trim(),
-                        'industry': _industryController.text.trim(),
-                        'category': _categoryController.text.trim(),
-                        'stage': _stage,
-                        'funding':
-                            double.tryParse(_fundingController.text.trim()) ??
-                            0.0,
-                        'equity':
-                            double.tryParse(_equityController.text.trim()) ??
-                            0.0,
-                      });
-                    },
-              child: const Text('Create'),
-            ),
-          ],
-        ),
-        if (_loading)
-          const Positioned.fill(
-            child: Material(
-              color: Colors.black26,
+          if (_loading)
+            const Positioned.fill(
               child: Center(child: CircularProgressIndicator()),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-class _EditIdeaDialog extends StatefulWidget {
-  const _EditIdeaDialog({required this.startup});
+class _EditIdeaBottomSheet extends StatefulWidget {
+  const _EditIdeaBottomSheet({required this.startup});
 
   final Startup startup;
 
   @override
-  State<_EditIdeaDialog> createState() => _EditIdeaDialogState();
+  State<_EditIdeaBottomSheet> createState() => _EditIdeaBottomSheetState();
 }
 
-class _EditIdeaDialogState extends State<_EditIdeaDialog> {
+class _EditIdeaBottomSheetState extends State<_EditIdeaBottomSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _fundingController;
   String? _stage;
@@ -652,77 +862,121 @@ class _EditIdeaDialogState extends State<_EditIdeaDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Edit Startup Idea'),
-      content: Form(
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 10,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppTextField(
-              controller: _fundingController,
-              label: 'Funding Ask (USD)',
-              hint: 'e.g. 25000',
-              keyboardType: TextInputType.number,
-              validator: (v) => double.tryParse(v ?? '') == null
-                  ? 'Enter valid funding ask'
-                  : null,
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _stage,
-              decoration: const InputDecoration(
-                labelText: 'Stage',
-                border: OutlineInputBorder(),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 20, top: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
               ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'Idea Stage',
-                  child: Text('Idea Stage'),
+              const Text(
+                'Edit Startup Idea',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              AppTextField(
+                controller: _fundingController,
+                label: 'Funding Ask (USD)',
+                hint: 'e.g. 25000',
+                keyboardType: TextInputType.number,
+                validator: (v) => double.tryParse(v ?? '') == null
+                    ? 'Enter valid funding ask'
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _stage,
+                decoration: const InputDecoration(
+                  labelText: 'Stage',
+                  border: OutlineInputBorder(),
                 ),
-                DropdownMenuItem(value: 'Prototype', child: Text('Prototype')),
-                DropdownMenuItem(value: 'MVP', child: Text('MVP')),
-                DropdownMenuItem(
-                  value: 'Early Revenue',
-                  child: Text('Early Revenue'),
-                ),
-                DropdownMenuItem(
-                  value: 'Early Traction',
-                  child: Text('Early Traction'),
-                ),
-                DropdownMenuItem(value: 'Growth', child: Text('Growth')),
-                DropdownMenuItem(value: 'Expansion', child: Text('Expansion')),
-              ],
-              onChanged: (val) => setState(() => _stage = val),
-              validator: (v) => v == null ? 'Stage is required' : null,
-            ),
-          ],
+                items: const [
+                  DropdownMenuItem(
+                    value: 'Idea Stage',
+                    child: Text('Idea Stage'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Prototype',
+                    child: Text('Prototype'),
+                  ),
+                  DropdownMenuItem(value: 'MVP', child: Text('MVP')),
+                  DropdownMenuItem(
+                    value: 'Early Revenue',
+                    child: Text('Early Revenue'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Early Traction',
+                    child: Text('Early Traction'),
+                  ),
+                  DropdownMenuItem(value: 'Growth', child: Text('Growth')),
+                  DropdownMenuItem(
+                    value: 'Expansion',
+                    child: Text('Expansion'),
+                  ),
+                ],
+                onChanged: (val) => setState(() => _stage = val),
+                validator: (v) => v == null ? 'Stage is required' : null,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(80, 44),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(100, 44),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                    ),
+                    onPressed: () {
+                      if (!_formKey.currentState!.validate()) return;
+                      Navigator.pop(context, {
+                        'funding':
+                            double.tryParse(_fundingController.text.trim()) ??
+                            0.0,
+                        'stage': _stage,
+                      });
+                    },
+                    child: const Text('Update'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          style: TextButton.styleFrom(
-            minimumSize: const Size(80, 36),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-          ),
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(80, 36),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-          ),
-          onPressed: () {
-            if (!_formKey.currentState!.validate()) return;
-            Navigator.pop(context, {
-              'funding': double.tryParse(_fundingController.text.trim()) ?? 0.0,
-              'stage': _stage,
-            });
-          },
-          child: const Text('Update'),
-        ),
-      ],
     );
   }
 }

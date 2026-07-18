@@ -24,6 +24,7 @@ class Startup extends Equatable {
     this.valuation = 0,
     this.fundingRaised = 0,
     this.pitchDeckUrl,
+    this.businessPlanUrl,
     this.views = 0,
     this.investorInterests = 0,
     this.isSaved = false,
@@ -54,6 +55,7 @@ class Startup extends Equatable {
   final double valuation;
   final double fundingRaised;
   final String? pitchDeckUrl;
+  final String? businessPlanUrl;
   final int views;
   final int investorInterests;
   final bool isSaved;
@@ -95,6 +97,7 @@ class Startup extends Equatable {
     valuation: valuation,
     fundingRaised: fundingRaised ?? this.fundingRaised,
     pitchDeckUrl: pitchDeckUrl,
+    businessPlanUrl: businessPlanUrl,
     views: views ?? this.views,
     investorInterests: investorInterests ?? this.investorInterests,
     isSaved: isSaved ?? this.isSaved,
@@ -232,7 +235,14 @@ class Startup extends Equatable {
           0.0,
       pitchDeckUrl:
           profile?['pitchDeckUrl'] as String? ??
-          json['pitchDeckUrl'] as String?,
+          json['pitchDeckUrl'] as String? ??
+          profile?['pitchDisk'] as String? ??
+          json['pitchDisk'] as String?,
+      businessPlanUrl:
+          profile?['businessPlanUrl'] as String? ??
+          json['businessPlanUrl'] as String? ??
+          profile?['Businessplan'] as String? ??
+          json['Businessplan'] as String?,
       views:
           (profile?['views'] as num?)?.toInt() ??
           (json['views'] as num?)?.toInt() ??
@@ -269,5 +279,13 @@ class Startup extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, founderId, isSaved, isFollowing, hasInvested];
+  List<Object?> get props => [
+    id,
+    founderId,
+    isSaved,
+    isFollowing,
+    hasInvested,
+    pitchDeckUrl,
+    businessPlanUrl,
+  ];
 }

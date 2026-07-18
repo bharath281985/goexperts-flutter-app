@@ -466,32 +466,31 @@ class BookmarksPage extends StatelessWidget {
         tabs = const [
           Tab(text: 'Startups'),
           Tab(text: 'Founders'),
-          Tab(text: 'Searches & Filters'),
-          Tab(text: 'Collections & Folders'),
-          Tab(text: 'Resources & Blogs'),
+          // Tab(text: 'Searches & Filters'),
+          // Tab(text: 'Collections & Folders'),
+          // Tab(text: 'Resources & Blogs'),
         ];
         tabViews = [
           _startupsView(context),
           _foundersView(context),
-          _buildSearchesAndFilters(context),
-          _buildCollectionsAndFolders(context),
-          _buildResourcesAndBlogs(context),
+          // _buildSearchesAndFilters(context),
+          // _buildCollectionsAndFolders(context),
+          // _buildResourcesAndBlogs(context),
         ];
         break;
       case UserRole.founder:
         tabs = const [
           Tab(text: 'Investors'),
-          Tab(text: 'Freelancers'),
-          Tab(text: 'Searches & Filters'),
-          Tab(text: 'Collections & Folders'),
-          Tab(text: 'Resources & Blogs'),
+         
+          // Tab(text: 'Searches & Filters'),
+          // Tab(text: 'Collections & Folders'),
+          // Tab(text: 'Resources & Blogs'),
         ];
         tabViews = [
           _investorsView(context),
-          _freelancersView(context),
-          _buildSearchesAndFilters(context),
-          _buildCollectionsAndFolders(context),
-          _buildResourcesAndBlogs(context),
+          // _buildSearchesAndFilters(context),
+          // _buildCollectionsAndFolders(context),
+          // _buildResourcesAndBlogs(context),
         ];
         break;
     }

@@ -109,15 +109,18 @@ class MeetingRepositoryImpl implements MeetingRepository {
         ? meeting.participants.first
         : null;
 
-    return _api.postAction(
-      path,
-      body: {
-        'founderId': withUserId,
-        'date': date,
-        'time': time,
-        'mode': meeting.isVideo ? 'Online' : 'Offline',
-      },
-    );
+    final body = <String, dynamic>{
+      'date': date,
+      'time': time,
+      'mode': meeting.isVideo ? 'Online' : 'Offline',
+    };
+    if (role == UserRole.founder) {
+      body['investorId'] = withUserId;
+    } else {
+      body['founderId'] = withUserId;
+    }
+
+    return _api.postAction(path, body: body);
   }
 
   @override

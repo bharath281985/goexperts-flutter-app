@@ -3,16 +3,18 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../core/extensions/context_extensions.dart';
-import '../../../../core/mock/mock_data.dart';
 import '../../../../core/utils/bookmark_manager.dart';
 import '../../../../core/utils/follow_manager.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/utils/paginated.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_shimmer.dart';
 import '../../../client_dashboard/domain/repositories/company_repository.dart';
 import '../../../founder_dashboard/domain/repositories/founder_repository.dart';
 import '../../../freelancer_dashboard/domain/repositories/freelancer_repository.dart';
 import '../../../investor_dashboard/domain/repositories/investor_repository.dart';
+import '../../domain/entities/review.dart';
+import '../../domain/repositories/review_repository.dart';
 import '../widgets/profile_view.dart';
 
 export '../widgets/profile_view.dart' show PublicProfileType;
@@ -163,6 +165,18 @@ class PublicProfilePage extends StatelessWidget {
     }
   }
 
+  Future<Map<String, dynamic>> _loadAll() async {
+    final profile = await _load();
+    List<Review> reviews = [];
+    if (profile != null) {
+      final reviewsRes = await sl<ReviewRepository>().getReviews(
+        QueryParams(filters: {'targetId': id, 'targetType': type.name}),
+      );
+      reviews = reviewsRes.fold((_) => [], (page) => page.items);
+    }
+    return {'profile': profile, 'reviews': reviews};
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -173,26 +187,26 @@ class PublicProfilePage extends StatelessWidget {
       builder: (context, _) {
         return Scaffold(
           appBar: AppBar(title: const Text('Profile')),
-          body: FutureBuilder<ProfileViewData?>(
-            future: _load(),
+          body: FutureBuilder<Map<String, dynamic>>(
+            future: _loadAll(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const AppLoadingShimmer(itemCount: 4, height: 120);
               }
               final data = snapshot.data;
-              if (data == null) return const AppErrorState();
+              final profile = data?['profile'] as ProfileViewData?;
+              final reviews = data?['reviews'] as List<Review>? ?? const [];
+              if (profile == null) return const AppErrorState();
               return ProfileView(
-                data: data,
-                reviews: type == PublicProfileType.freelancer
-                    ? MockData.reviews
-                    : const [],
+                data: profile,
+                reviews: reviews,
                 onPrimaryAction: () => context.showSnack(
-                  '${data.primaryActionLabel} · ${data.name}',
+                  '${profile.primaryActionLabel} · ${profile.name}',
                 ),
                 onMessage: () {
-                  final nameEncoded = Uri.encodeComponent(data.name);
+                  final nameEncoded = Uri.encodeComponent(profile.name);
                   final avatarEncoded = Uri.encodeComponent(
-                    data.avatarUrl ?? '',
+                    profile.avatarUrl ?? '',
                   );
                   context.push(
                     '${Routes.chat}/$id?name=$nameEncoded&avatarUrl=$avatarEncoded',

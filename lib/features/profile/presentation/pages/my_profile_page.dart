@@ -11,11 +11,61 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../core/widgets/app_gradient_header.dart';
 import '../../../../core/widgets/app_list_tile.dart';
+import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../freelancer_dashboard/presentation/pages/freelancer_subpages.dart';
+import '../../domain/repositories/review_repository.dart';
+import 'my_reviews_page.dart';
 
-class MyProfilePage extends StatelessWidget {
+class MyProfilePage extends StatefulWidget {
   const MyProfilePage({super.key});
+
+  @override
+  State<MyProfilePage> createState() => _MyProfilePageState();
+}
+
+class _MyProfilePageState extends State<MyProfilePage> {
+  double _rating = 0.0;
+  int _reviewsCount = 0;
+  bool _loadingAverage = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAverage();
+  }
+
+  Future<void> _fetchAverage() async {
+    final repo = sl<ReviewRepository>();
+    final result = await repo.getReviewsAverage();
+    if (!mounted) return;
+    result.fold(
+      (f) {
+        setState(() {
+          _loadingAverage = false;
+        });
+      },
+      (data) {
+        final avgRating =
+            data['averageRating'] ??
+            data['average_rating'] ??
+            data['average'] ??
+            data['rating'] ??
+            0.0;
+        final totalReviews =
+            data['totalReviews'] ??
+            data['total_reviews'] ??
+            data['total'] ??
+            data['count'] ??
+            0;
+        setState(() {
+          _rating = double.tryParse(avgRating.toString()) ?? 0.0;
+          _reviewsCount = int.tryParse(totalReviews.toString()) ?? 0;
+          _loadingAverage = false;
+        });
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,9 +159,21 @@ class MyProfilePage extends StatelessWidget {
               AppCard(
                 child: Row(
                   children: [
-                    Expanded(child: _stat(context, '4.9', 'Rating')),
+                    Expanded(
+                      child: _stat(
+                        context,
+                        _loadingAverage ? '…' : _rating.toStringAsFixed(1),
+                        'Rating',
+                      ),
+                    ),
                     _divider(context),
-                    Expanded(child: _stat(context, '128', 'Reviews')),
+                    Expanded(
+                      child: _stat(
+                        context,
+                        _loadingAverage ? '…' : _reviewsCount.toString(),
+                        'Reviews',
+                      ),
+                    ),
                     _divider(context),
                     Expanded(child: _stat(context, '1.2K', 'Followers')),
                     _divider(context),
@@ -155,7 +217,14 @@ class MyProfilePage extends StatelessWidget {
                       );
                     }
                   }),
-                _tile(context, Icons.star_outline_rounded, 'Reviews', () {}),
+                _tile(
+                  context,
+                  Icons.star_outline_rounded,
+                  'Reviews',
+                  () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const MyReviewsPage()),
+                  ),
+                ),
                 _tile(
                   context,
                   Icons.insights_outlined,
