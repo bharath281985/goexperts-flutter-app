@@ -41,7 +41,7 @@ class AppSearchBar extends StatelessWidget {
             autofocus: autofocus,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: hint,
+              hintText: context.tr(hint),
               prefixIcon: const Icon(
                 Icons.search_rounded,
                 size: AppSizes.iconMd,

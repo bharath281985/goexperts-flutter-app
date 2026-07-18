@@ -43,11 +43,15 @@ class AppEmptyState extends StatelessWidget {
               ),
             ),
             AppSizes.vGapLg,
-            Text(title, style: context.text.titleMedium, textAlign: TextAlign.center),
+            Text(
+              context.tr(title),
+              style: context.text.titleMedium,
+              textAlign: TextAlign.center,
+            ),
             if (message != null) ...[
               AppSizes.vGapSm,
               Text(
-                message!,
+                context.tr(message!),
                 style: context.text.bodySmall,
                 textAlign: TextAlign.center,
               ),

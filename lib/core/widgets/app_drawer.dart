@@ -90,7 +90,7 @@ class AppDrawer extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              user?.fullName ?? 'Guest',
+                              user?.fullName ?? context.tr('Guest'),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
@@ -100,7 +100,7 @@ class AppDrawer extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
-                              role.label,
+                              context.tr(role.label),
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.85),
                                 fontSize: 12,
@@ -132,7 +132,7 @@ class AppDrawer extends StatelessWidget {
                         AppSizes.hGapSm,
                         Flexible(
                           child: Text(
-                            _planLabel(user?.subscriptionPlan),
+                            context.tr(_planLabel(user?.subscriptionPlan)),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -161,7 +161,7 @@ class AppDrawer extends StatelessWidget {
                         AppSizes.xs,
                       ),
                       child: Text(
-                        section.title.toUpperCase(),
+                        context.tr(section.title).toUpperCase(),
                         style: context.text.labelSmall?.copyWith(
                           letterSpacing: 1,
                         ),
@@ -175,7 +175,10 @@ class AppDrawer extends StatelessWidget {
                           size: 20,
                           color: AppColors.mutedText,
                         ),
-                        title: Text(e.label, style: context.text.bodyMedium),
+                        title: Text(
+                          context.tr(e.label),
+                          style: context.text.bodyMedium,
+                        ),
                         trailing: e.badge != null && e.badge! > 0
                             ? Container(
                                 padding: const EdgeInsets.symmetric(
@@ -212,9 +215,9 @@ class AppDrawer extends StatelessWidget {
                       size: 20,
                       color: AppColors.danger,
                     ),
-                    title: const Text(
-                      'Log Out',
-                      style: TextStyle(color: AppColors.danger),
+                    title: Text(
+                      context.tr('Log Out'),
+                      style: const TextStyle(color: AppColors.danger),
                     ),
                     onTap: () async {
                       final confirm = await AppConfirmDialog.show(

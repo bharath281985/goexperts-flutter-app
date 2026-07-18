@@ -36,8 +36,20 @@ class MessageRepositoryImpl implements MessageRepository {
   Future<UserRole?> _role() =>
       _tokenRoleHelper?.resolve() ?? Future.value(null);
 
-  Future<String?> _userId() =>
-      _tokenRoleHelper?.userId() ?? Future.value(null);
+  Future<String?> _userId() => _tokenRoleHelper?.userId() ?? Future.value(null);
+
+  Future<Result<T>> _firstSuccess<T>(
+    List<Future<Result<T>> Function()> attempts,
+  ) async {
+    Result<T>? last;
+    for (final attempt in attempts) {
+      final result = await attempt();
+      if (result.isSuccess) return result;
+      last = result;
+    }
+    return last ??
+        const Err(ServerFailure('Live API client is not configured.'));
+  }
 
   @override
   Future<List<Conversation>> getCachedConversations() async {
@@ -98,16 +110,28 @@ class MessageRepositoryImpl implements MessageRepository {
         ? ApiEndpoints.founderMessagesConversations
         : ApiEndpoints.chatConversations;
 
-    final result = await _api.getEnvelope<List<Conversation>>(
-      path,
-      query: params.toApiQuery(),
-      parser: (envelope) =>
-          ApiResponse.parseList(envelope.data, _conversationFromJson),
-    );
+    final result = await _firstSuccess<List<Conversation>>([
+      () => _api.getEnvelope<List<Conversation>>(
+        path,
+        query: params.toApiQuery(),
+        parser: (envelope) =>
+            ApiResponse.parseList(envelope.data, _conversationFromJson),
+      ),
+      if (role == UserRole.freelancer)
+        () => _api.getEnvelope<List<Conversation>>(
+          ApiEndpoints.chatConversations,
+          query: params.toApiQuery(),
+          parser: (envelope) =>
+              ApiResponse.parseList(envelope.data, _conversationFromJson),
+        ),
+    ]);
 
     final list = result.valueOrNull;
     if (list == null) {
-      return result.fold((f) => Err(f), (_) => const Err(ServerFailure('Empty')));
+      return result.fold(
+        (f) => Err(f),
+        (_) => const Err(ServerFailure('Empty')),
+      );
     }
     await _saveCache(list);
     return Success(
@@ -128,7 +152,7 @@ class MessageRepositoryImpl implements MessageRepository {
     final path = (role == UserRole.client)
         ? ApiEndpoints.clientMessageConversation(conversationId)
         : (role == UserRole.freelancer)
-        ? ApiEndpoints.chatConversation(conversationId)
+        ? ApiEndpoints.freelancerMessage(conversationId)
         : (role == UserRole.investor)
         ? '/investor/messages/$conversationId'
         : (role == UserRole.founder)
@@ -136,13 +160,23 @@ class MessageRepositoryImpl implements MessageRepository {
         : ApiEndpoints.chatConversation(conversationId);
 
     final userId = await _userId();
-    return _api.getEnvelope<List<ChatMessage>>(
-      path,
-      parser: (envelope) => ApiResponse.parseList(
-        envelope.data,
-        (json) => _chatMessageFromJson(json, userId),
+    return _firstSuccess<List<ChatMessage>>([
+      () => _api.getEnvelope<List<ChatMessage>>(
+        path,
+        parser: (envelope) => ApiResponse.parseList(
+          envelope.data,
+          (json) => _chatMessageFromJson(json, userId),
+        ),
       ),
-    );
+      if (role == UserRole.client || role == UserRole.freelancer)
+        () => _api.getEnvelope<List<ChatMessage>>(
+          ApiEndpoints.chatConversation(conversationId),
+          parser: (envelope) => ApiResponse.parseList(
+            envelope.data,
+            (json) => _chatMessageFromJson(json, userId),
+          ),
+        ),
+    ]);
   }
 
   @override
@@ -155,7 +189,7 @@ class MessageRepositoryImpl implements MessageRepository {
 
     final role = await _role();
     final path = (role == UserRole.freelancer)
-        ? ApiEndpoints.chatSend
+        ? ApiEndpoints.freelancerMessages
         : (role == UserRole.client)
         ? ApiEndpoints.clientMessagesSend
         : (role == UserRole.investor)
@@ -165,20 +199,33 @@ class MessageRepositoryImpl implements MessageRepository {
         : ApiEndpoints.chatSend;
 
     final userId = await _userId();
-    return _api.post<ChatMessage>(
-      path,
-      body: <String, dynamic>{
-        'conversationId': conversationId,
-        if (text.trim().isNotEmpty) 'text': text.trim(),
-        if (attachmentUrl != null && attachmentUrl.isNotEmpty)
-          'attachmentUrl': attachmentUrl,
-      },
-      parser: (data) => _chatMessageFromJson(
-        Map<String, dynamic>.from(data as Map),
-        userId,
+    final body = <String, dynamic>{
+      'conversationId': conversationId,
+      if (text.trim().isNotEmpty) 'text': text.trim(),
+      if (attachmentUrl != null && attachmentUrl.isNotEmpty)
+        'attachmentUrl': attachmentUrl,
+    };
+    return _firstSuccess<ChatMessage>([
+      () => _api.post<ChatMessage>(
+        path,
+        body: body,
+        parser: (data) => _chatMessageFromJson(
+          Map<String, dynamic>.from(data as Map),
+          userId,
+        ),
+        allowNullData: false,
       ),
-      allowNullData: false,
-    );
+      if (role == UserRole.client || role == UserRole.freelancer)
+        () => _api.post<ChatMessage>(
+          ApiEndpoints.chatSend,
+          body: body,
+          parser: (data) => _chatMessageFromJson(
+            Map<String, dynamic>.from(data as Map),
+            userId,
+          ),
+          allowNullData: false,
+        ),
+    ]);
   }
 
   @override
@@ -190,7 +237,9 @@ class MessageRepositoryImpl implements MessageRepository {
     if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
 
     final role = await _role();
-    final path = (role == UserRole.client)
+    final path = (role == UserRole.freelancer)
+        ? ApiEndpoints.freelancerMessages
+        : (role == UserRole.client)
         ? ApiEndpoints.clientMessagesSend
         : ApiEndpoints.chatSend;
 
@@ -203,15 +252,27 @@ class MessageRepositoryImpl implements MessageRepository {
     };
 
     final userId = await _userId();
-    return _api.post<ChatMessage>(
-      path,
-      body: body,
-      parser: (data) => _chatMessageFromJson(
-        Map<String, dynamic>.from(data as Map),
-        userId,
+    return _firstSuccess<ChatMessage>([
+      () => _api.post<ChatMessage>(
+        path,
+        body: body,
+        parser: (data) => _chatMessageFromJson(
+          Map<String, dynamic>.from(data as Map),
+          userId,
+        ),
+        allowNullData: false,
       ),
-      allowNullData: false,
-    );
+      if (role == UserRole.client || role == UserRole.freelancer)
+        () => _api.post<ChatMessage>(
+          ApiEndpoints.chatSend,
+          body: body,
+          parser: (data) => _chatMessageFromJson(
+            Map<String, dynamic>.from(data as Map),
+            userId,
+          ),
+          allowNullData: false,
+        ),
+    ]);
   }
 
   @override
@@ -225,7 +286,9 @@ class MessageRepositoryImpl implements MessageRepository {
     }
     final size = await file.length();
     if (size > _maxAttachmentBytes) {
-      return const Err(ValidationFailure('File too large. Maximum size is 10MB.'));
+      return const Err(
+        ValidationFailure('File too large. Maximum size is 10MB.'),
+      );
     }
 
     final role = await _role();
@@ -233,7 +296,15 @@ class MessageRepositoryImpl implements MessageRepository {
         ? ApiEndpoints.clientMessagesAttachments
         : ApiEndpoints.chatAttachments;
 
-    return _uploader.uploadUrl(path: filePath, endpoint: endpoint);
+    final upload = await _uploader.uploadUrl(
+      path: filePath,
+      endpoint: endpoint,
+    );
+    if (upload.isSuccess || role != UserRole.client) return upload;
+    return _uploader.uploadUrl(
+      path: filePath,
+      endpoint: ApiEndpoints.chatAttachments,
+    );
   }
 
   @override
@@ -243,7 +314,11 @@ class MessageRepositoryImpl implements MessageRepository {
     final path = role == UserRole.client
         ? ApiEndpoints.clientMessageRead(messageId)
         : ApiEndpoints.chatMessageRead(messageId);
-    return _api.patchAction(path);
+    return _firstSuccess<bool>([
+      () => _api.patchAction(path),
+      if (role == UserRole.client)
+        () => _api.patchAction(ApiEndpoints.chatMessageRead(messageId)),
+    ]);
   }
 
   @override
@@ -253,7 +328,13 @@ class MessageRepositoryImpl implements MessageRepository {
     final path = role == UserRole.client
         ? '${ApiEndpoints.clientMessagesConversations}/$conversationId/read-all'
         : '${ApiEndpoints.chatConversations}/$conversationId/read-all';
-    return _api.patchAction(path);
+    return _firstSuccess<bool>([
+      () => _api.patchAction(path),
+      if (role == UserRole.client)
+        () => _api.patchAction(
+          '${ApiEndpoints.chatConversations}/$conversationId/read-all',
+        ),
+    ]);
   }
 
   @override
@@ -263,7 +344,13 @@ class MessageRepositoryImpl implements MessageRepository {
     final path = role == UserRole.client
         ? '${ApiEndpoints.clientMessagesConversations}/$conversationId/unread'
         : '${ApiEndpoints.chatConversations}/$conversationId/unread';
-    return _api.patchAction(path);
+    return _firstSuccess<bool>([
+      () => _api.patchAction(path),
+      if (role == UserRole.client)
+        () => _api.patchAction(
+          '${ApiEndpoints.chatConversations}/$conversationId/unread',
+        ),
+    ]);
   }
 
   @override
@@ -275,7 +362,11 @@ class MessageRepositoryImpl implements MessageRepository {
         : role == UserRole.freelancer
         ? ApiEndpoints.freelancerMessage(messageId)
         : '/chat/messages/$messageId';
-    return _api.deleteAction(path);
+    return _firstSuccess<bool>([
+      () => _api.deleteAction(path),
+      if (role == UserRole.client || role == UserRole.freelancer)
+        () => _api.deleteAction('/chat/messages/$messageId'),
+    ]);
   }
 
   @override
@@ -285,7 +376,13 @@ class MessageRepositoryImpl implements MessageRepository {
     final path = role == UserRole.client
         ? '${ApiEndpoints.clientMessagesConversations}/$conversationId'
         : '${ApiEndpoints.chatConversations}/$conversationId';
-    return _api.deleteAction(path);
+    return _firstSuccess<bool>([
+      () => _api.deleteAction(path),
+      if (role == UserRole.client)
+        () => _api.deleteAction(
+          '${ApiEndpoints.chatConversations}/$conversationId',
+        ),
+    ]);
   }
 
   @override
@@ -372,7 +469,8 @@ class MessageRepositoryImpl implements MessageRepository {
     final senderId =
         json['senderId']?.toString() ?? json['sender_id']?.toString();
     final explicitMine = json['isMine'] as bool?;
-    final isMine = explicitMine ??
+    final isMine =
+        explicitMine ??
         (from == 'me' ||
             (currentUserId != null &&
                 senderId != null &&

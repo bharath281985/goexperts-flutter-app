@@ -26,9 +26,10 @@ class ProjectRepositoryImpl implements ProjectRepository {
     final String path;
     if (role == UserRole.client) {
       path = ApiEndpoints.clientProjects;
-    } else if (role == UserRole.freelancer &&
-        (params.search?.trim().isNotEmpty ?? false)) {
-      path = ApiEndpoints.freelancerProjectsSearch;
+    } else if (role == UserRole.freelancer) {
+      path = (params.search?.trim().isNotEmpty ?? false)
+          ? ApiEndpoints.freelancerProjectsSearch
+          : ApiEndpoints.freelancerProjects;
     } else {
       path = ApiEndpoints.publicProjects;
     }

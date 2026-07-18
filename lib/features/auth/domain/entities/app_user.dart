@@ -29,6 +29,7 @@ class AppUser extends Equatable {
   final bool isVerified;
   final bool isProfileComplete;
   final String? subscriptionPlan;
+
   /// Backend gate: `active` | `expired` | `none` (optional until login/me returns it).
   final String? subscriptionStatus;
   final String? headline;
@@ -64,7 +65,8 @@ class AppUser extends Equatable {
     );
   }
 
-  factory AppUser.fromJson(Map<String, dynamic> json) => AppUser.fromApiJson(json);
+  factory AppUser.fromJson(Map<String, dynamic> json) =>
+      AppUser.fromApiJson(json);
 
   /// Parses API user payloads (camelCase or snake_case).
   static final _uuidPattern = RegExp(
@@ -84,17 +86,21 @@ class AppUser extends Equatable {
     bool flag(String camel, String snake) =>
         json[camel] as bool? ?? json[snake] as bool? ?? false;
 
-    final profileCompletion = json['profileCompletion'] as int? ??
+    final profileCompletion =
+        json['profileCompletion'] as int? ??
         json['profile_completion'] as int? ??
         0;
     final roleRaw = str('role', 'role');
 
     final city = str('city', 'city');
     final country = str('country', 'country');
-    final locationParts =
-        [city, country].whereType<String>().where((s) => s.isNotEmpty);
-    final joinedLocation =
-        locationParts.isEmpty ? null : locationParts.join(', ');
+    final locationParts = [
+      city,
+      country,
+    ].whereType<String>().where((s) => s.isNotEmpty);
+    final joinedLocation = locationParts.isEmpty
+        ? null
+        : locationParts.join(', ');
 
     return AppUser(
       id: str('id', 'id') ?? '',
@@ -105,11 +111,15 @@ class AppUser extends Equatable {
       role: roleRaw != null ? UserRole.fromString(roleRaw) : null,
       avatarUrl: str('avatarUrl', 'avatar_url'),
       isVerified: flag('isVerified', 'is_verified'),
-      isProfileComplete: flag('isProfileComplete', 'is_profile_complete') ||
+      isProfileComplete:
+          flag('isProfileComplete', 'is_profile_complete') ||
           profileCompletion >= 80,
       // Prefer human-readable plan name; never store raw plan UUIDs.
-      subscriptionPlan: _readablePlan(str('subscriptionPlan', 'subscription_plan')) ??
-          _readablePlan(str('subscriptionPlanName', 'subscription_plan_name')) ??
+      subscriptionPlan:
+          _readablePlan(str('subscriptionPlan', 'subscription_plan')) ??
+          _readablePlan(
+            str('subscriptionPlanName', 'subscription_plan_name'),
+          ) ??
           _readablePlan(str('subscriptionPlanId', 'subscription_plan_id')),
       subscriptionStatus: str('subscriptionStatus', 'subscription_status'),
       headline: str('headline', 'headline') ?? str('bio', 'bio'),
@@ -118,31 +128,31 @@ class AppUser extends Equatable {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'full_name': fullName,
-        'email': email,
-        'phone': phone,
-        'country_code': countryCode,
-        'role': role?.apiValue,
-        'avatar_url': avatarUrl,
-        'is_verified': isVerified,
-        'is_profile_complete': isProfileComplete,
-        'subscription_plan': subscriptionPlan,
-        'subscription_status': subscriptionStatus,
-        'headline': headline,
-        'location': location,
-      };
+    'id': id,
+    'full_name': fullName,
+    'email': email,
+    'phone': phone,
+    'country_code': countryCode,
+    'role': role?.apiValue,
+    'avatar_url': avatarUrl,
+    'is_verified': isVerified,
+    'is_profile_complete': isProfileComplete,
+    'subscription_plan': subscriptionPlan,
+    'subscription_status': subscriptionStatus,
+    'headline': headline,
+    'location': location,
+  };
 
   @override
   List<Object?> get props => [
-        id,
-        email,
-        phone,
-        countryCode,
-        role,
-        isVerified,
-        isProfileComplete,
-        subscriptionPlan,
-        subscriptionStatus,
-      ];
+    id,
+    email,
+    phone,
+    countryCode,
+    role,
+    isVerified,
+    isProfileComplete,
+    subscriptionPlan,
+    subscriptionStatus,
+  ];
 }

@@ -98,7 +98,7 @@ class _Bar extends StatelessWidget {
           ),
         ),
         AppSizes.vGapSm,
-        Text(data.label, style: context.text.labelSmall),
+        Text(context.tr(data.label), style: context.text.labelSmall),
       ],
     );
   }

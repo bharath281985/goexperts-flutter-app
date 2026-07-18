@@ -68,9 +68,17 @@ class AppConfirmDialog extends StatelessWidget {
               ),
               AppSizes.vGapLg,
             ],
-            Text(title, style: context.text.titleLarge, textAlign: TextAlign.center),
+            Text(
+              context.tr(title),
+              style: context.text.titleLarge,
+              textAlign: TextAlign.center,
+            ),
             AppSizes.vGapSm,
-            Text(message, style: context.text.bodyMedium, textAlign: TextAlign.center),
+            Text(
+              context.tr(message),
+              style: context.text.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
             AppSizes.vGapXl,
             Row(
               children: [

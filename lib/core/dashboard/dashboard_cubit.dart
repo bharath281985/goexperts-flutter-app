@@ -8,6 +8,7 @@ import '../../features/investor_dashboard/domain/entities/investor.dart';
 import '../../features/investor_dashboard/domain/repositories/investor_repository.dart';
 import '../../features/meetings/domain/entities/meeting.dart';
 import '../../features/meetings/domain/repositories/meeting_repository.dart';
+import '../../features/messages/domain/repositories/message_repository.dart';
 import '../../features/projects/domain/entities/project.dart';
 import '../../features/projects/domain/repositories/project_repository.dart';
 import '../../features/startup_ideas/domain/entities/startup.dart';
@@ -81,7 +82,8 @@ class DashboardState extends Equatable {
       profileCompletionPercent:
           profileCompletionPercent ?? this.profileCompletionPercent,
       activeProjectsCount: activeProjectsCount ?? this.activeProjectsCount,
-      pendingProposalsCount: pendingProposalsCount ?? this.pendingProposalsCount,
+      pendingProposalsCount:
+          pendingProposalsCount ?? this.pendingProposalsCount,
       monthlyEarnings: monthlyEarnings ?? this.monthlyEarnings,
       topSkills: topSkills ?? this.topSkills,
       earningsChart: earningsChart ?? this.earningsChart,
@@ -92,24 +94,23 @@ class DashboardState extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [
-        status,
-        meetings,
-        projects,
-        freelancers,
-        startups,
-        investors,
-        wallet,
-        profileCompletionPercent,
-        activeProjectsCount,
-        pendingProposalsCount,
-        monthlyEarnings,
-        topSkills,
-        earningsChart,
-        unreadNotificationsCount,
-        unreadMessagesCount,
-      ];
+  List<Object?> get props => [
+    status,
+    meetings,
+    projects,
+    freelancers,
+    startups,
+    investors,
+    wallet,
+    profileCompletionPercent,
+    activeProjectsCount,
+    pendingProposalsCount,
+    monthlyEarnings,
+    topSkills,
+    earningsChart,
+    unreadNotificationsCount,
+    unreadMessagesCount,
+  ];
 }
 
 /// Loads the data needed by a role's home screen in one shot.
@@ -121,6 +122,7 @@ class DashboardCubit extends Cubit<DashboardState> {
     required this.startupRepository,
     required this.investorRepository,
     required this.meetingRepository,
+    required this.messageRepository,
     required this.walletRepository,
     required this.apiClient,
   }) : super(const DashboardState());
@@ -131,6 +133,7 @@ class DashboardCubit extends Cubit<DashboardState> {
   final StartupRepository startupRepository;
   final InvestorRepository investorRepository;
   final MeetingRepository meetingRepository;
+  final MessageRepository messageRepository;
   final WalletRepository walletRepository;
   final ApiClientHelper apiClient;
 
@@ -151,7 +154,9 @@ class DashboardCubit extends Cubit<DashboardState> {
       switch (role) {
         case UserRole.freelancer:
           final projects = await projectRepository.getProjects(_q);
-          next = next.copyWith(projects: projects.valueOrNull?.items ?? const []);
+          next = next.copyWith(
+            projects: projects.valueOrNull?.items ?? const [],
+          );
           break;
         case UserRole.client:
           final freelancers = await freelancerRepository.getFreelancers(_q);
@@ -163,11 +168,15 @@ class DashboardCubit extends Cubit<DashboardState> {
           break;
         case UserRole.investor:
           final startups = await startupRepository.getStartups(_q);
-          next = next.copyWith(startups: startups.valueOrNull?.items ?? const []);
+          next = next.copyWith(
+            startups: startups.valueOrNull?.items ?? const [],
+          );
           break;
         case UserRole.founder:
           final investors = await investorRepository.getInvestors(_q);
-          next = next.copyWith(investors: investors.valueOrNull?.items ?? const []);
+          next = next.copyWith(
+            investors: investors.valueOrNull?.items ?? const [],
+          );
           break;
       }
 
@@ -175,43 +184,39 @@ class DashboardCubit extends Cubit<DashboardState> {
       if (role == UserRole.freelancer) {
         final dash = await apiClient.getEnvelope<Map<String, dynamic>>(
           ApiEndpoints.freelancerDashboard,
-          parser: (envelope) =>
-              Map<String, dynamic>.from(envelope.data as Map),
+          parser: (envelope) => Map<String, dynamic>.from(envelope.data as Map),
         );
-        dash.fold(
-          (failure) {},
-          (data) {
-            final completion =
-                (data['profileCompletion'] as num?)?.toInt() ?? 0;
-            final pendingProposals =
-                (data['pendingProposals'] as num?)?.toInt() ?? 0;
-            final activeProjects =
-                (data['acceptedProjects'] as num?)?.toInt() ?? 0;
-            final monthlyEarnings =
-                (data['monthlyEarnings'] as num?)?.toDouble() ?? 0;
-            final topSkills = (data['topSkills'] as List?)
-                    ?.map((e) => e.toString().trim())
-                    .where((s) => s.isNotEmpty && !_looksLikeUuid(s))
-                    .toList() ??
-                const <String>[];
-            final earningsChartRaw = (data['charts']?['earnings'] as List?)
-                    ?.map((e) => (e as num?)?.toDouble() ?? 0)
-                    .toList() ??
-                const <double>[];
-            next = next.copyWith(
-              profileCompletionPercent: completion,
-              pendingProposalsCount: pendingProposals,
-              activeProjectsCount: activeProjects,
-              monthlyEarnings: monthlyEarnings,
-              topSkills: topSkills,
-              earningsChart: earningsChartRaw,
-              unreadNotificationsCount:
-                  (data['unreadNotifications'] as num?)?.toInt() ?? 0,
-              unreadMessagesCount:
-                  (data['unreadMessages'] as num?)?.toInt() ?? 0,
-            );
-          },
-        );
+        dash.fold((failure) {}, (data) {
+          final completion = (data['profileCompletion'] as num?)?.toInt() ?? 0;
+          final pendingProposals =
+              (data['pendingProposals'] as num?)?.toInt() ?? 0;
+          final activeProjects =
+              (data['acceptedProjects'] as num?)?.toInt() ?? 0;
+          final monthlyEarnings =
+              (data['monthlyEarnings'] as num?)?.toDouble() ?? 0;
+          final topSkills =
+              (data['topSkills'] as List?)
+                  ?.map((e) => e.toString().trim())
+                  .where((s) => s.isNotEmpty && !_looksLikeUuid(s))
+                  .toList() ??
+              const <String>[];
+          final earningsChartRaw =
+              (data['charts']?['earnings'] as List?)
+                  ?.map((e) => (e as num?)?.toDouble() ?? 0)
+                  .toList() ??
+              const <double>[];
+          next = next.copyWith(
+            profileCompletionPercent: completion,
+            pendingProposalsCount: pendingProposals,
+            activeProjectsCount: activeProjects,
+            monthlyEarnings: monthlyEarnings,
+            topSkills: topSkills,
+            earningsChart: earningsChartRaw,
+            unreadNotificationsCount:
+                (data['unreadNotifications'] as num?)?.toInt() ?? 0,
+            unreadMessagesCount: (data['unreadMessages'] as num?)?.toInt() ?? 0,
+          );
+        });
       }
 
       if (role == UserRole.client) {
@@ -219,34 +224,28 @@ class DashboardCubit extends Cubit<DashboardState> {
           ApiEndpoints.clientDashboard,
           parser: (envelope) => Map<String, dynamic>.from(envelope.data as Map),
         );
-        dash.fold(
-          (_) {},
-          (data) {
-            final activeProjects =
-                (data['activeProjects'] as num?)?.toInt() ?? 0;
-            final applications =
-                (data['applications'] as num?)?.toInt() ?? 0;
-            final hiredFreelancers =
-                (data['hiredFreelancers'] as num?)?.toInt() ?? 0;
-            final monthlySpend =
-                (data['monthlySpend'] as num?)?.toDouble() ?? 0;
-            final spendChart = (data['charts']?['spend'] as List?)
-                    ?.map((e) => (e as num?)?.toDouble() ?? 0)
-                    .toList() ??
-                const <double>[];
-            next = next.copyWith(
-              activeProjectsCount: activeProjects,
-              pendingProposalsCount: applications,
-              profileCompletionPercent: hiredFreelancers,
-              monthlyEarnings: monthlySpend,
-              earningsChart: spendChart,
-              unreadNotificationsCount:
-                  (data['unreadNotifications'] as num?)?.toInt() ?? 0,
-              unreadMessagesCount:
-                  (data['unreadMessages'] as num?)?.toInt() ?? 0,
-            );
-          },
-        );
+        dash.fold((_) {}, (data) {
+          final activeProjects = (data['activeProjects'] as num?)?.toInt() ?? 0;
+          final applications = (data['applications'] as num?)?.toInt() ?? 0;
+          final hiredFreelancers =
+              (data['hiredFreelancers'] as num?)?.toInt() ?? 0;
+          final monthlySpend = (data['monthlySpend'] as num?)?.toDouble() ?? 0;
+          final spendChart =
+              (data['charts']?['spend'] as List?)
+                  ?.map((e) => (e as num?)?.toDouble() ?? 0)
+                  .toList() ??
+              const <double>[];
+          next = next.copyWith(
+            activeProjectsCount: activeProjects,
+            pendingProposalsCount: applications,
+            profileCompletionPercent: hiredFreelancers,
+            monthlyEarnings: monthlySpend,
+            earningsChart: spendChart,
+            unreadNotificationsCount:
+                (data['unreadNotifications'] as num?)?.toInt() ?? 0,
+            unreadMessagesCount: (data['unreadMessages'] as num?)?.toInt() ?? 0,
+          );
+        });
       }
 
       if (role == UserRole.investor) {
@@ -254,31 +253,28 @@ class DashboardCubit extends Cubit<DashboardState> {
           ApiEndpoints.investorDashboard,
           parser: (envelope) => Map<String, dynamic>.from(envelope.data as Map),
         );
-        dash.fold(
-          (_) {},
-          (data) {
-            final portfolioValue =
-                (data['portfolioValue'] as num?)?.toDouble() ?? 0;
-            final activeDeals = (data['activeDeals'] as num?)?.toInt() ?? 0;
-            final watchlist = (data['watchlistCount'] as num?)?.toInt() ?? 0;
-            final diligence = (data['dueDiligenceCount'] as num?)?.toInt() ?? 0;
-            final chart = (data['charts']?['pipeline'] as List?)
-                    ?.map((e) => (e as num?)?.toDouble() ?? 0)
-                    .toList() ??
-                const <double>[];
-            next = next.copyWith(
-              monthlyEarnings: portfolioValue,
-              activeProjectsCount: activeDeals,
-              pendingProposalsCount: watchlist,
-              profileCompletionPercent: diligence,
-              earningsChart: chart,
-              unreadNotificationsCount:
-                  (data['unreadNotifications'] as num?)?.toInt() ?? 0,
-              unreadMessagesCount:
-                  (data['unreadMessages'] as num?)?.toInt() ?? 0,
-            );
-          },
-        );
+        dash.fold((_) {}, (data) {
+          final portfolioValue =
+              (data['portfolioValue'] as num?)?.toDouble() ?? 0;
+          final activeDeals = (data['activeDeals'] as num?)?.toInt() ?? 0;
+          final watchlist = (data['watchlistCount'] as num?)?.toInt() ?? 0;
+          final diligence = (data['dueDiligenceCount'] as num?)?.toInt() ?? 0;
+          final chart =
+              (data['charts']?['pipeline'] as List?)
+                  ?.map((e) => (e as num?)?.toDouble() ?? 0)
+                  .toList() ??
+              const <double>[];
+          next = next.copyWith(
+            monthlyEarnings: portfolioValue,
+            activeProjectsCount: activeDeals,
+            pendingProposalsCount: watchlist,
+            profileCompletionPercent: diligence,
+            earningsChart: chart,
+            unreadNotificationsCount:
+                (data['unreadNotifications'] as num?)?.toInt() ?? 0,
+            unreadMessagesCount: (data['unreadMessages'] as num?)?.toInt() ?? 0,
+          );
+        });
       }
 
       if (role == UserRole.founder) {
@@ -286,34 +282,42 @@ class DashboardCubit extends Cubit<DashboardState> {
           ApiEndpoints.founderDashboard,
           parser: (envelope) => Map<String, dynamic>.from(envelope.data as Map),
         );
-        dash.fold(
-          (_) {},
-          (data) {
-            final investorInterests =
-                (data['investorInterests'] as num?)?.toInt() ?? 0;
-            final pitchViews = (data['pitchDeckViews'] as num?)?.toInt() ?? 0;
-            final startupViews = (data['startupViews'] as num?)?.toInt() ?? 0;
-            final meetings = (data['meetingsCount'] as num?)?.toInt() ?? 0;
-            final raised = (data['fundingRaised'] as num?)?.toDouble() ?? 0;
-            final fundingChart = (data['charts']?['funding'] as List?)
-                    ?.map((e) => (e as num?)?.toDouble() ?? 0)
-                    .toList() ??
-                const <double>[];
-            next = next.copyWith(
-              activeProjectsCount: investorInterests,
-              pendingProposalsCount: pitchViews,
-              profileCompletionPercent: startupViews,
-              monthlyEarnings: raised,
-              topSkills: ['$meetings'],
-              earningsChart: fundingChart,
-              unreadNotificationsCount:
-                  (data['unreadNotifications'] as num?)?.toInt() ?? 0,
-              unreadMessagesCount:
-                  (data['unreadMessages'] as num?)?.toInt() ?? 0,
-            );
-          },
-        );
+        dash.fold((_) {}, (data) {
+          final investorInterests =
+              (data['investorInterests'] as num?)?.toInt() ?? 0;
+          final pitchViews = (data['pitchDeckViews'] as num?)?.toInt() ?? 0;
+          final startupViews = (data['startupViews'] as num?)?.toInt() ?? 0;
+          final meetings = (data['meetingsCount'] as num?)?.toInt() ?? 0;
+          final raised = (data['fundingRaised'] as num?)?.toDouble() ?? 0;
+          final fundingChart =
+              (data['charts']?['funding'] as List?)
+                  ?.map((e) => (e as num?)?.toDouble() ?? 0)
+                  .toList() ??
+              const <double>[];
+          next = next.copyWith(
+            activeProjectsCount: investorInterests,
+            pendingProposalsCount: pitchViews,
+            profileCompletionPercent: startupViews,
+            monthlyEarnings: raised,
+            topSkills: ['$meetings'],
+            earningsChart: fundingChart,
+            unreadNotificationsCount:
+                (data['unreadNotifications'] as num?)?.toInt() ?? 0,
+            unreadMessagesCount: (data['unreadMessages'] as num?)?.toInt() ?? 0,
+          );
+        });
       }
+
+      final conversations = await messageRepository.getConversations(
+        const QueryParams(page: 1, pageSize: 50),
+      );
+      conversations.fold((_) {}, (page) {
+        final unreadMessages = page.items.fold<int>(
+          0,
+          (total, conversation) => total + conversation.unreadCount,
+        );
+        next = next.copyWith(unreadMessagesCount: unreadMessages);
+      });
 
       emit(next);
     } catch (_) {
@@ -330,4 +334,3 @@ final _uuidPattern = RegExp(
 );
 
 bool _looksLikeUuid(String value) => _uuidPattern.hasMatch(value.trim());
-

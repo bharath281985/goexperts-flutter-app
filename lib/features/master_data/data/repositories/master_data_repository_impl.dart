@@ -36,19 +36,19 @@ class MasterDataRepositoryImpl implements MasterDataRepository {
   Future<Result<List<SkillCategory>>> getIndustries() async {
     final result = await _client.getList<SkillCategory>(
       path: ApiEndpoints.publicCategories,
-      query: const {
-        'page': 1,
-        'pageSize': 100,
-      },
+      query: const {'page': 1, 'pageSize': 100},
       itemParser: SkillCategory.fromJson,
     );
     if (result.isFailure) {
       return Err(result.failureOrNull!);
     }
-    final rows = result.valueOrNull!.rows
-        .where((item) => item.id.isNotEmpty && item.name.trim().isNotEmpty)
-        .toList()
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final rows =
+        result.valueOrNull!.rows
+            .where((item) => item.id.isNotEmpty && item.name.trim().isNotEmpty)
+            .toList()
+          ..sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
     return Success(rows);
   }
 
@@ -60,11 +60,7 @@ class MasterDataRepositoryImpl implements MasterDataRepository {
   }) async {
     final result = await _client.getList<SkillOption>(
       path: ApiEndpoints.publicSkills,
-      query: {
-        'categoryId': categoryId,
-        'page': page,
-        'pageSize': pageSize,
-      },
+      query: {'categoryId': categoryId, 'page': page, 'pageSize': pageSize},
       itemParser: SkillOption.fromJson,
     );
     if (result.isFailure) {
@@ -77,11 +73,7 @@ class MasterDataRepositoryImpl implements MasterDataRepository {
   Future<Result<int>> getSkillsTotal({required String categoryId}) async {
     final result = await _client.getList<SkillOption>(
       path: ApiEndpoints.publicSkills,
-      query: {
-        'categoryId': categoryId,
-        'page': 1,
-        'pageSize': 1,
-      },
+      query: {'categoryId': categoryId, 'page': 1, 'pageSize': 1},
       itemParser: SkillOption.fromJson,
     );
     if (result.isFailure) {

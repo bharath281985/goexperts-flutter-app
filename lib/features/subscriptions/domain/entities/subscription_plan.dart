@@ -10,6 +10,8 @@ class SubscriptionPlan extends Equatable {
     required this.features,
     this.isPopular = false,
     this.tagline = '',
+    this.duration = '',
+    this.limits = const {},
   });
 
   final String id;
@@ -19,7 +21,9 @@ class SubscriptionPlan extends Equatable {
   final List<String> features;
   final bool isPopular;
   final String tagline;
+  final String duration;
+  final Map<String, dynamic> limits;
 
   @override
-  List<Object?> get props => [id, name, priceMonthly];
+  List<Object?> get props => [id, name, priceMonthly, duration, limits];
 }

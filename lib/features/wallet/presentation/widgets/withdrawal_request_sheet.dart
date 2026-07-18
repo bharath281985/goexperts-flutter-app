@@ -112,16 +112,16 @@ Future<String?> showWithdrawalRequestSheet(
                       ),
                       AppSizes.vGapMd,
                       SegmentedButton<String>(
-                        segments: const [
+                        segments: [
                           ButtonSegment(
                             value: 'bank',
-                            label: Text('Bank'),
-                            icon: Icon(Icons.account_balance_outlined),
+                            label: Text(context.tr('Bank')),
+                            icon: const Icon(Icons.account_balance_outlined),
                           ),
                           ButtonSegment(
                             value: 'upi',
-                            label: Text('UPI'),
-                            icon: Icon(Icons.qr_code_2_rounded),
+                            label: Text(context.tr('UPI')),
+                            icon: const Icon(Icons.qr_code_2_rounded),
                           ),
                         ],
                         selected: {method},

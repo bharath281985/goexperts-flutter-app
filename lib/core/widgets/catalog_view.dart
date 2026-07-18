@@ -26,6 +26,7 @@ class CatalogView<T> extends StatelessWidget {
     this.gridColumns = 1,
     this.showSearch = true,
     this.skeletonHeight = 120,
+    this.onRefresh,
   });
 
   final ListFetcher<T> fetcher;
@@ -41,6 +42,7 @@ class CatalogView<T> extends StatelessWidget {
   final int gridColumns;
   final bool showSearch;
   final double skeletonHeight;
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +61,7 @@ class CatalogView<T> extends StatelessWidget {
         gridColumns: gridColumns,
         showSearch: showSearch,
         skeletonHeight: skeletonHeight,
+        onRefresh: onRefresh,
       ),
     );
   }
@@ -78,6 +81,7 @@ class _CatalogBody<T> extends StatefulWidget {
     required this.gridColumns,
     required this.showSearch,
     required this.skeletonHeight,
+    this.onRefresh,
   });
 
   final Widget Function(BuildContext, T, int) itemBuilder;
@@ -92,6 +96,7 @@ class _CatalogBody<T> extends StatefulWidget {
   final int gridColumns;
   final bool showSearch;
   final double skeletonHeight;
+  final Future<void> Function()? onRefresh;
 
   @override
   State<_CatalogBody<T>> createState() => _CatalogBodyState<T>();
@@ -170,6 +175,9 @@ class _CatalogBodyState<T> extends State<_CatalogBody<T>> {
                 separator: widget.separator,
                 onRefresh: () async {
                   bloc.add(const ListRefreshed());
+                  if (widget.onRefresh != null) {
+                    await widget.onRefresh!();
+                  }
                   await bloc.stream.firstWhere(
                     (s) => s.status != ViewStatus.refreshing,
                   );

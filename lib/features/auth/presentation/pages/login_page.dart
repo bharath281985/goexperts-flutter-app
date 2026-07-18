@@ -86,11 +86,11 @@ class _LoginPageState extends State<LoginPage> {
                       onChanged: (v) => setState(() => _remember = v ?? false),
                       visualDensity: VisualDensity.compact,
                     ),
-                    const Text(AppStrings.rememberMe),
+                    Text(context.tr(AppStrings.rememberMe)),
                     const Spacer(),
                     TextButton(
                       onPressed: () => context.push(Routes.forgotPassword),
-                      child: const Text(AppStrings.forgotPassword),
+                      child: Text(context.tr(AppStrings.forgotPassword)),
                     ),
                   ],
                 ),
@@ -108,13 +108,13 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        "Don't have an account?",
+                        context.tr("Don't have an account?"),
                         style: context.text.bodySmall,
                       ),
                       TextButton(
                         onPressed: () => context.push(Routes.signup),
-                        child: const Text(
-                          'Create Account',
+                        child: Text(
+                          context.tr('Create Account'),
                           style: TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w600,

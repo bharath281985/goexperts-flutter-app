@@ -49,9 +49,9 @@ class AppListTile extends StatelessWidget {
                   ),
                 )
               : null),
-      title: Text(title, style: context.text.titleSmall),
+      title: Text(context.tr(title), style: context.text.titleSmall),
       subtitle: subtitle != null
-          ? Text(subtitle!, style: context.text.bodySmall)
+          ? Text(context.tr(subtitle!), style: context.text.bodySmall)
           : null,
       trailing:
           trailing ??

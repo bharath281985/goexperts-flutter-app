@@ -51,7 +51,7 @@ class AppPrimaryButton extends StatelessWidget {
               ],
               Flexible(
                 child: Text(
-                  label,
+                  context.tr(label),
                   overflow: TextOverflow.ellipsis,
                   style: context.text.bodySmall?.copyWith(
                     color: textColor,

@@ -202,10 +202,10 @@ class _CategorySkillsPickerState extends State<CategorySkillsPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: context.text.titleSmall),
+        Text(context.tr(title), style: context.text.titleSmall),
         if (subtitle != null) ...[
           AppSizes.vGapXs,
-          Text(subtitle, style: context.text.bodySmall),
+          Text(context.tr(subtitle), style: context.text.bodySmall),
         ],
       ],
     );
@@ -229,7 +229,10 @@ class _CategorySkillsPickerState extends State<CategorySkillsPicker> {
             _loadError!,
             style: context.text.bodyMedium?.copyWith(color: AppColors.danger),
           ),
-          TextButton(onPressed: _loadCategories, child: const Text('Retry')),
+          TextButton(
+            onPressed: _loadCategories,
+            child: Text(context.tr('Retry')),
+          ),
         ],
       );
     }
@@ -321,7 +324,9 @@ class _CategorySkillsPickerState extends State<CategorySkillsPicker> {
         if (widget.selectedSkillIds.isNotEmpty) ...[
           AppSizes.vGapSm,
           Text(
-            '${widget.selectedSkillIds.length} selected',
+            context
+                .tr('{count} selected')
+                .replaceFirst('{count}', '${widget.selectedSkillIds.length}'),
             style: context.text.bodySmall?.copyWith(color: AppColors.primary),
           ),
         ],
@@ -351,13 +356,15 @@ class _CategorySkillsPickerState extends State<CategorySkillsPicker> {
               TextButton(
                 onPressed: () =>
                     _loadSkillsForCategory(widget.selectedCategoryId!),
-                child: const Text('Retry'),
+                child: Text(context.tr('Retry')),
               ),
             ],
           )
         else if (_visibleSkills.isEmpty)
           Text(
-            'No skills found for $categoryName',
+            context
+                .tr('No skills found for {category}')
+                .replaceFirst('{category}', categoryName),
             style: context.text.bodyMedium,
           )
         else ...[

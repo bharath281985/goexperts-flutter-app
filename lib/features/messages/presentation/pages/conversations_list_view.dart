@@ -16,7 +16,7 @@ import '../../domain/entities/conversation.dart';
 import '../../domain/repositories/message_repository.dart';
 import '../widgets/conversation_tile.dart';
 
-/// Messages list: shows cached conversations first; network refresh on pull-to-refresh only.
+/// Messages list backed by the live conversations API.
 class ConversationsListView extends StatefulWidget {
   const ConversationsListView({super.key});
 
@@ -45,15 +45,6 @@ class _ConversationsListViewState extends State<ConversationsListView> {
   }
 
   Future<void> _bootstrap() async {
-    final cached = await _repo.getCachedConversations();
-    if (!mounted) return;
-    if (cached.isNotEmpty) {
-      setState(() {
-        _items = cached;
-        _status = ViewStatus.success;
-      });
-      return;
-    }
     await _refresh(showLoading: true);
   }
 

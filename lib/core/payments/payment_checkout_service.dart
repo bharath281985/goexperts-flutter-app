@@ -69,9 +69,10 @@ class PaymentCheckoutService {
     String currency = 'INR',
     String? planId,
     Map<String, dynamic>? metadata,
+    String? endpoint,
   }) async {
     final res = await _api.post<Map<String, dynamic>>(
-      ApiEndpoints.paymentsInitiate,
+      endpoint ?? ApiEndpoints.paymentsInitiate,
       body: {
         'gateway': gateway,
         'purpose': purpose,
@@ -144,6 +145,7 @@ class PaymentCheckoutService {
     String currency = 'INR',
     String? planId,
     Map<String, dynamic>? metadata,
+    String? endpoint,
   }) async {
     final initiateResult = await initiate(
       gateway: 'easebuzz',
@@ -152,6 +154,7 @@ class PaymentCheckoutService {
       currency: currency,
       planId: planId,
       metadata: metadata,
+      endpoint: endpoint,
     );
     if (initiateResult.isFailure) {
       return Err(initiateResult.failureOrNull!);
@@ -172,9 +175,10 @@ class PaymentCheckoutService {
     String? purpose,
     String? planId,
     Map<String, dynamic>? verification,
+    String? endpoint,
   }) async {
     final res = await _api.post<Map<String, dynamic>>(
-      ApiEndpoints.paymentsVerify,
+      endpoint ?? ApiEndpoints.paymentsVerify,
       body: {
         'paymentId': paymentId,
         'gateway': gateway,

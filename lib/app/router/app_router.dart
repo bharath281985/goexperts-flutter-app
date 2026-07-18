@@ -59,6 +59,7 @@ import '../../features/settings/presentation/pages/global_search_page.dart';
 import '../../features/settings/presentation/pages/security_center_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/startup_ideas/presentation/pages/startup_details_page.dart';
+import '../../features/subscriptions/presentation/pages/current_subscription_page.dart';
 import '../../features/subscriptions/presentation/pages/subscription_selection_page.dart';
 import '../../features/support/presentation/pages/support_page.dart';
 import '../../features/wallet/presentation/pages/wallet_page.dart';
@@ -354,8 +355,7 @@ GoRouter createRouter(AuthBloc authBloc) {
       ),
       GoRoute(
         path: Routes.subscriptionsManage,
-        builder: (_, __) =>
-            const SubscriptionSelectionPage(isOnboarding: false),
+        builder: (_, __) => const CurrentSubscriptionPage(),
       ),
 
       // Detail / deep-link routes
