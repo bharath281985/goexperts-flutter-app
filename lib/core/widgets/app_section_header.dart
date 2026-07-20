@@ -26,9 +26,9 @@ class AppSectionHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: context.text.titleMedium),
+              Text(context.tr(title), style: context.text.titleMedium),
               if (subtitle != null)
-                Text(subtitle!, style: context.text.bodySmall),
+                Text(context.tr(subtitle!), style: context.text.bodySmall),
             ],
           ),
         ),
@@ -42,10 +42,18 @@ class AppSectionHeader extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Text(actionLabel!,
-                    style: const TextStyle(
-                        color: AppColors.primary, fontWeight: FontWeight.w600)),
-                const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primary),
+                Text(
+                  context.tr(actionLabel!),
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
               ],
             ),
           ),

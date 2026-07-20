@@ -90,7 +90,7 @@ class _AppMultiSelectState extends State<AppMultiSelect> {
       final isSelected = widget.selected.contains(o);
       final selectedColor = AppColors.primary.withValues(alpha: 0.12);
       return FilterChip(
-        label: Text(o),
+        label: Text(context.tr(o)),
         selected: isSelected,
         showCheckmark: false,
         onSelected: (_) => _toggle(o),
@@ -99,7 +99,9 @@ class _AppMultiSelectState extends State<AppMultiSelect> {
           color: isSelected ? AppColors.primary : context.theme.dividerColor,
         ),
         labelStyle: TextStyle(
-          color: isSelected ? AppColors.primary : context.text.bodyMedium?.color,
+          color: isSelected
+              ? AppColors.primary
+              : context.text.bodyMedium?.color,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
         ),
       );
@@ -109,7 +111,7 @@ class _AppMultiSelectState extends State<AppMultiSelect> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (widget.label != null) ...[
-          Text(widget.label!, style: context.text.titleSmall),
+          Text(context.tr(widget.label!), style: context.text.titleSmall),
           AppSizes.vGapSm,
         ],
         if (hasCategories) ...[
@@ -121,7 +123,7 @@ class _AppMultiSelectState extends State<AppMultiSelect> {
                   Padding(
                     padding: const EdgeInsets.only(right: AppSizes.sm),
                     child: ChoiceChip(
-                      label: Text(category),
+                      label: Text(context.tr(category)),
                       selected: category == _activeCategory,
                       showCheckmark: false,
                       onSelected: (_) {
@@ -146,7 +148,10 @@ class _AppMultiSelectState extends State<AppMultiSelect> {
             child: Row(
               children: [
                 for (final c in chips)
-                  Padding(padding: const EdgeInsets.only(right: AppSizes.sm), child: c),
+                  Padding(
+                    padding: const EdgeInsets.only(right: AppSizes.sm),
+                    child: c,
+                  ),
               ],
             ),
           ),
@@ -156,7 +161,7 @@ class _AppMultiSelectState extends State<AppMultiSelect> {
             alignment: Alignment.centerLeft,
             child: TextButton(
               onPressed: () => setState(() => _isExpanded = !_isExpanded),
-              child: Text(_isExpanded ? 'Show less' : 'Show more'),
+              child: Text(context.tr(_isExpanded ? 'Show less' : 'Show more')),
             ),
           ),
         ],

@@ -32,10 +32,28 @@ class AppPaymentCard extends StatelessWidget {
         children: [
           Text('${isCredit ? '+' : '-'}${Formatters.compactCurrency(transaction.amount)}',
               style: context.text.titleSmall?.copyWith(color: isCredit ? AppColors.success : AppColors.darkText)),
-          Text(transaction.status, style: context.text.labelSmall),
+          Text(
+            _capitalize(transaction.direction),
+            style: context.text.labelSmall?.copyWith(
+              color: _getDirectionColor(transaction.direction),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Color _getDirectionColor(String direction) {
+    final dir = direction.toLowerCase();
+    if (dir == 'rejected' || dir == 'pending' || dir == 'cancelled') {
+      return AppColors.danger;
+    }
+    return AppColors.success;
+  }
+
+  String _capitalize(String s) {
+    if (s.isEmpty) return s;
+    return s[0].toUpperCase() + s.substring(1).toLowerCase();
   }
 
   Color _color() {

@@ -1,25 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../app/constants/app_colors.dart';
 import '../../../../app/constants/app_sizes.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/utils/enums.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../core/payments/payment_checkout_service.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/utils/result.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section_header.dart';
 import '../../../../core/widgets/catalog_view.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../domain/entities/wallet.dart';
 import '../../domain/repositories/wallet_repository.dart';
+import '../widgets/add_money_sheet.dart';
 import '../widgets/payment_card.dart';
 import '../widgets/withdrawal_request_sheet.dart';
 
 class WalletPage extends StatefulWidget {
-  const WalletPage({super.key, this.embedded = false});
+  const WalletPage({super.key, this.embedded = false, this.refreshToken = 0});
   final bool embedded;
+  final int refreshToken;
 
   @override
   State<WalletPage> createState() => _WalletPageState();
@@ -27,34 +33,71 @@ class WalletPage extends StatefulWidget {
 
 class _WalletPageState extends State<WalletPage> {
   int _listKey = 0;
+  Future<Result<WalletSummary>>? _summaryFuture;
+  late final WalletRepository _repo;
 
-  void _reload() => setState(() => _listKey++);
+  @override
+  void initState() {
+    super.initState();
+    _repo = sl<WalletRepository>();
+    _summaryFuture = _repo.getSummary();
+  }
+
+  void _reload() {
+    setState(() {
+      _listKey++;
+      _summaryFuture = _repo.getSummary();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant WalletPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.refreshToken != oldWidget.refreshToken) {
+      _reload();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final repo = sl<WalletRepository>();
     final body = CatalogView<WalletTransaction>(
       key: ValueKey(_listKey),
-      fetcher: repo.getTransactions,
+      fetcher: _repo.getTransactions,
       showSearch: false,
       skeletonHeight: 64,
       emptyTitle: 'No transactions yet',
       emptyIcon: Icons.receipt_long_outlined,
       separator: const Divider(height: 1),
-      header: _WalletHeader(repo: repo, onWithdrawalSuccess: _reload),
+      header: _WalletHeader(
+        repo: _repo,
+        summaryFuture: _summaryFuture ?? _repo.getSummary(),
+        onWithdrawalSuccess: _reload,
+      ),
       itemBuilder: (context, t, _) => AppPaymentCard(transaction: t),
+      onRefresh: () async {
+        final future = _repo.getSummary();
+        setState(() {
+          _summaryFuture = future;
+        });
+        await future;
+      },
     );
     if (widget.embedded) return body;
     return AppScaffold(
-      appBar: AppBar(title: const Text('Wallet')),
+      appBar: AppBar(title: Text(context.tr('Wallet'))),
       body: body,
     );
   }
 }
 
 class _WalletHeader extends StatelessWidget {
-  const _WalletHeader({required this.repo, required this.onWithdrawalSuccess});
+  const _WalletHeader({
+    required this.repo,
+    required this.summaryFuture,
+    required this.onWithdrawalSuccess,
+  });
   final WalletRepository repo;
+  final Future<Result<WalletSummary>> summaryFuture;
   final VoidCallback onWithdrawalSuccess;
 
   @override
@@ -70,7 +113,7 @@ class _WalletHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           FutureBuilder(
-            future: repo.getSummary(),
+            future: summaryFuture,
             builder: (context, snapshot) {
               final s =
                   snapshot.data?.valueOrNull ??
@@ -98,15 +141,18 @@ class _WalletHeader extends StatelessWidget {
                           () => context.push(Routes.freelancerInvoices),
                         ),
                       ),
-                      AppSizes.hGapMd,
-                      Expanded(
-                        child: _action(
-                          context,
-                          Icons.add_card_outlined,
-                          'Add Money',
-                          () => _addMoney(context),
+                      if (context.select((AuthBloc b) => b.state.user?.role) ==
+                          UserRole.client) ...[
+                        AppSizes.hGapMd,
+                        Expanded(
+                          child: _action(
+                            context,
+                            Icons.add_card_outlined,
+                            'Add Money',
+                            () => _addMoney(context),
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ],
@@ -122,113 +168,10 @@ class _WalletHeader extends StatelessWidget {
   }
 
   Future<void> _addMoney(BuildContext context) async {
-    final amountController = TextEditingController();
-
-    final amount = await showDialog<double>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Add Funds'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Enter the amount you would like to add to your wallet.',
-              ),
-              AppSizes.vGapMd,
-              AppTextField(
-                controller: amountController,
-                label: 'Amount',
-                hint: '0.00',
-                prefixIcon: Icons.currency_rupee_rounded,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final val = double.tryParse(amountController.text.trim());
-                if (val == null || val <= 0) {
-                  dialogContext.showSnack(
-                    'Enter a valid amount',
-                    isError: true,
-                  );
-                  return;
-                }
-                Navigator.pop(dialogContext, val);
-              },
-              child: const Text('Add Amount'),
-            ),
-          ],
-        );
-      },
-    );
-
-    amountController.dispose();
-    if (amount == null || amount <= 0) return;
-
-    if (!context.mounted) return;
-
-    // Show loading overlay
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    final checkout = sl<PaymentCheckoutService>();
-    final result = await checkout.checkoutWithEasebuzz(
-      purpose: 'wallet_load',
-      amount: amount,
-      metadata: {'purpose': 'wallet_load'},
-    );
-
-    if (!context.mounted) return;
-    Navigator.pop(context); // Dismiss loading dialog
-
-    await result.fold(
-      (f) async {
-        context.showSnack(f.message, isError: true);
-      },
-      (paid) async {
-        // Show verification loading overlay
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => const Center(child: CircularProgressIndicator()),
-        );
-
-        final sdk = paid.checkout;
-        final verify = await checkout.verify(
-          paymentId: paid.payment.paymentId,
-          gateway: paid.payment.gateway,
-          purpose: 'wallet_load',
-          verification: {
-            'status': 'success',
-            'orderId': paid.payment.orderId,
-            'txnid': paid.payment.orderId,
-            ...sdk.raw,
-            if (sdk.raw['payment_response'] is Map)
-              ...Map<String, dynamic>.from(sdk.raw['payment_response'] as Map),
-          },
-        );
-
-        if (!context.mounted) return;
-        Navigator.pop(context); // Dismiss verification loader
-
-        verify.fold((f) => context.showSnack(f.message, isError: true), (_) {
-          context.showSnack('Payment verified! Wallet balance updated.');
-          onWithdrawalSuccess(); // reload the wallet summary
-        });
-      },
-    );
+    final message = await showAddMoneySheet(context);
+    if (!context.mounted || message == null) return;
+    context.showSnack(message);
+    onWithdrawalSuccess();
   }
 
   Future<void> _requestWithdrawal(
@@ -254,7 +197,7 @@ class _WalletHeader extends StatelessWidget {
         children: [
           Icon(icon, color: AppColors.primary),
           const SizedBox(height: 6),
-          Text(label, style: context.text.labelMedium),
+          Text(context.tr(label), style: context.text.labelMedium),
         ],
       ),
     );
@@ -278,7 +221,7 @@ class _BalanceCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Available Balance',
+            context.tr('Available Balance'),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.85),
               fontSize: 13,
@@ -298,18 +241,21 @@ class _BalanceCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _stat(
+                  context,
                   'Pending',
                   Formatters.compactCurrency(summary.pending),
                 ),
               ),
               Expanded(
                 child: _stat(
+                  context,
                   'In Escrow',
                   Formatters.compactCurrency(summary.escrow),
                 ),
               ),
               Expanded(
                 child: _stat(
+                  context,
                   'Lifetime',
                   Formatters.compactCurrency(summary.lifetime),
                 ),
@@ -321,7 +267,7 @@ class _BalanceCard extends StatelessWidget {
     );
   }
 
-  Widget _stat(String label, String value) => Column(
+  Widget _stat(BuildContext context, String label, String value) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
@@ -333,7 +279,7 @@ class _BalanceCard extends StatelessWidget {
         ),
       ),
       Text(
-        label,
+        context.tr(label),
         style: TextStyle(
           color: Colors.white.withValues(alpha: 0.8),
           fontSize: 11,

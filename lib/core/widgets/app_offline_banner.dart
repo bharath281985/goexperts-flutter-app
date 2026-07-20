@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app/constants/app_colors.dart';
 import '../../app/constants/app_sizes.dart';
+import '../extensions/context_extensions.dart';
 
 /// Thin banner shown when the device is offline. Wire visibility to
 /// connectivity state / an offline queue later.
@@ -15,21 +16,33 @@ class AppOfflineBanner extends StatelessWidget {
     return Material(
       color: AppColors.warning.withValues(alpha: 0.15),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSizes.lg, vertical: AppSizes.sm),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.lg,
+          vertical: AppSizes.sm,
+        ),
         child: Row(
           children: [
-            const Icon(Icons.wifi_off_rounded, size: 16, color: AppColors.warning),
+            const Icon(
+              Icons.wifi_off_rounded,
+              size: 16,
+              color: AppColors.warning,
+            ),
             AppSizes.hGapSm,
             Expanded(
               child: Text(
                 pendingCount > 0
-                    ? "You're offline · $pendingCount change(s) queued"
-                    : "You're offline",
+                    ? context
+                          .tr("You're offline · {count} change(s) queued")
+                          .replaceFirst('{count}', '$pendingCount')
+                    : context.tr("You're offline"),
                 style: const TextStyle(fontSize: 12, color: AppColors.darkText),
               ),
             ),
             if (onRetry != null)
-              TextButton(onPressed: onRetry, child: const Text('Retry Sync')),
+              TextButton(
+                onPressed: onRetry,
+                child: Text(context.tr('Retry Sync')),
+              ),
           ],
         ),
       ),

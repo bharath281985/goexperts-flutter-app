@@ -31,7 +31,7 @@ class AppDropdown<T> extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label != null) ...[
-          Text(label!, style: context.text.titleSmall),
+          Text(context.tr(label!), style: context.text.titleSmall),
           AppSizes.vGapSm,
         ],
         DropdownButtonFormField<T>(
@@ -39,14 +39,21 @@ class AppDropdown<T> extends StatelessWidget {
           isExpanded: true,
           validator: validator,
           decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: AppSizes.iconMd) : null,
+            hintText: hint == null ? null : context.tr(hint!),
+            prefixIcon: prefixIcon != null
+                ? Icon(prefixIcon, size: AppSizes.iconMd)
+                : null,
           ),
           items: items
-              .map((e) => DropdownMenuItem<T>(
-                    value: e,
-                    child: Text(itemLabel(e), overflow: TextOverflow.ellipsis),
-                  ))
+              .map(
+                (e) => DropdownMenuItem<T>(
+                  value: e,
+                  child: Text(
+                    context.tr(itemLabel(e)),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              )
               .toList(),
           onChanged: onChanged,
         ),

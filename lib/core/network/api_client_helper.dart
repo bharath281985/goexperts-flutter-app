@@ -87,6 +87,24 @@ class ApiClientHelper {
     }
   }
 
+  Future<Result<T>> postEnvelopeAcceptingHttpSuccess<T>(
+    String path, {
+    Map<String, dynamic>? body,
+    required T Function(ApiResponse<dynamic> envelope) parser,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(path, data: body);
+      final responseBody = response.data ?? {};
+      final envelope = ApiResponse.parse(responseBody, null);
+      if (responseBody.containsKey('success')) {
+        ApiExceptionHandler.ensureSuccess(envelope);
+      }
+      return Success(parser(envelope));
+    } catch (e) {
+      return Err(ApiExceptionHandler.mapException(e));
+    }
+  }
+
   Future<Result<bool>> postAction(
     String path, {
     Map<String, dynamic>? body,

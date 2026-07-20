@@ -16,4 +16,10 @@ abstract class WalletRepository {
     Map<String, dynamic>? bankDetails,
     Map<String, dynamic>? upiDetails,
   });
+  Future<Result<String>> addMoney({
+    required double amount,
+    required String gateway,
+    required String currency,
+    required String purpose,
+  });
 }

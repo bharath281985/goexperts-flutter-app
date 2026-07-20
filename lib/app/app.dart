@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/connectivity/connectivity_cubit.dart';
@@ -19,8 +18,10 @@ import '../core/widgets/app_offline_banner.dart';
 import '../features/auth/domain/repositories/auth_repository.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/subscriptions/domain/repositories/subscription_repository.dart';
+import '../l10n/app_localizations.dart';
 import 'constants/app_strings.dart';
 import 'dependency_injection/service_locator.dart';
+import 'locale/locale_cubit.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_cubit.dart';
@@ -114,41 +115,39 @@ class _GoExpertsAppState extends State<GoExpertsApp> {
       providers: [
         BlocProvider<AuthBloc>.value(value: _authBloc),
         BlocProvider<ThemeCubit>(create: (_) => ThemeCubit(sl<LocalStorage>())),
+        BlocProvider<LocaleCubit>(
+          create: (_) => LocaleCubit(sl<LocalStorage>()),
+        ),
         BlocProvider<ConnectivityCubit>.value(value: sl<ConnectivityCubit>()),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) {
-          return MaterialApp.router(
-            title: AppStrings.appName,
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.light,
-            darkTheme: AppTheme.dark,
-            themeMode: themeMode,
-            supportedLocales: const [
-              Locale('en'),
-              Locale('hi'),
-              Locale('te'),
-              Locale('ta'),
-              Locale('kn'),
-            ],
-            localizationsDelegates: const [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            routerConfig: _router,
-            builder: (context, child) {
-              return BlocBuilder<ConnectivityCubit, ConnectivityState>(
-                builder: (context, connectivity) {
-                  return Column(
-                    children: [
-                      if (!connectivity.isOnline)
-                        AppOfflineBanner(
-                          onRetry: () =>
-                              context.read<ConnectivityCubit>().retry(),
-                        ),
-                      Expanded(child: child ?? const SizedBox.shrink()),
-                    ],
+          return BlocBuilder<LocaleCubit, Locale>(
+            builder: (context, locale) {
+              return MaterialApp.router(
+                title: AppStrings.appName,
+                debugShowCheckedModeBanner: false,
+                theme: AppTheme.light,
+                darkTheme: AppTheme.dark,
+                themeMode: themeMode,
+                locale: locale,
+                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                routerConfig: _router,
+                builder: (context, child) {
+                  return BlocBuilder<ConnectivityCubit, ConnectivityState>(
+                    builder: (context, connectivity) {
+                      return Column(
+                        children: [
+                          if (!connectivity.isOnline)
+                            AppOfflineBanner(
+                              onRetry: () =>
+                                  context.read<ConnectivityCubit>().retry(),
+                            ),
+                          Expanded(child: child ?? const SizedBox.shrink()),
+                        ],
+                      );
+                    },
                   );
                 },
               );

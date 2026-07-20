@@ -95,7 +95,7 @@ class AppStatCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  label,
+                  context.tr(label),
                   style: context.text.bodySmall,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

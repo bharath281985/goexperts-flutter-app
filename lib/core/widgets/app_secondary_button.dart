@@ -40,7 +40,7 @@ class AppSecondaryButton extends StatelessWidget {
               ],
               Flexible(
                 child: Text(
-                  label,
+                  context.tr(label),
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: fg,

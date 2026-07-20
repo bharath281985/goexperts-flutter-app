@@ -59,7 +59,7 @@ class _AppTextFieldState extends State<AppTextField> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (widget.label != null) ...[
-          Text(widget.label!, style: context.text.titleSmall),
+          Text(context.tr(widget.label!), style: context.text.titleSmall),
           AppSizes.vGapSm,
         ],
         TextFormField(
@@ -78,7 +78,7 @@ class _AppTextFieldState extends State<AppTextField> {
           readOnly: widget.readOnly,
           onTap: widget.onTap,
           decoration: InputDecoration(
-            hintText: widget.hint,
+            hintText: widget.hint == null ? null : context.tr(widget.hint!),
             prefixIcon: widget.prefixIcon != null
                 ? Icon(widget.prefixIcon, size: AppSizes.iconMd)
                 : null,

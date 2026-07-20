@@ -12,6 +12,7 @@ import '../../features/investor_dashboard/presentation/pages/investor_home_page.
 import '../../features/investor_dashboard/presentation/pages/investors_list_view.dart';
 import '../../features/meetings/domain/repositories/meeting_repository.dart';
 import '../../features/meetings/presentation/pages/meetings_list_view.dart';
+import '../../features/messages/domain/repositories/message_repository.dart';
 import '../../features/messages/presentation/pages/conversations_list_view.dart';
 import '../../features/profile/presentation/pages/my_profile_page.dart';
 import '../../features/projects/domain/repositories/project_repository.dart';
@@ -21,6 +22,7 @@ import '../../features/startup_ideas/presentation/pages/startups_list_view.dart'
 import '../../features/wallet/domain/repositories/wallet_repository.dart';
 import '../../features/wallet/presentation/pages/wallet_page.dart';
 import '../network/api_client_helper.dart';
+import '../extensions/context_extensions.dart';
 import '../utils/enums.dart';
 import '../widgets/app_bottom_navigation.dart';
 import '../widgets/app_drawer.dart';
@@ -46,7 +48,7 @@ class RoleShell extends StatefulWidget {
 
 class _RoleShellState extends State<RoleShell> {
   late int _index = widget.initialIndex;
-  late final List<_Tab> _baseTabs = _buildTabs();
+  int _walletRefreshToken = 0;
 
   DashboardCubit _cubit() => DashboardCubit(
     role: widget.role,
@@ -55,6 +57,7 @@ class _RoleShellState extends State<RoleShell> {
     startupRepository: sl<StartupRepository>(),
     investorRepository: sl<InvestorRepository>(),
     meetingRepository: sl<MeetingRepository>(),
+    messageRepository: sl<MessageRepository>(),
     walletRepository: sl<WalletRepository>(),
     apiClient: sl<ApiClientHelper>(),
   )..load();
@@ -62,8 +65,8 @@ class _RoleShellState extends State<RoleShell> {
   List<_Tab> _buildTabs() {
     switch (widget.role) {
       case UserRole.freelancer:
-        return const [
-          _Tab(
+        return [
+          const _Tab(
             AppNavItem(
               label: 'Home',
               icon: Icons.home_outlined,
@@ -71,7 +74,7 @@ class _RoleShellState extends State<RoleShell> {
             ),
             FreelancerHomePage(),
           ),
-          _Tab(
+          const _Tab(
             AppNavItem(
               label: 'Projects',
               icon: Icons.work_outline_rounded,
@@ -95,10 +98,10 @@ class _RoleShellState extends State<RoleShell> {
               icon: Icons.account_balance_wallet_outlined,
               activeIcon: Icons.account_balance_wallet_rounded,
             ),
-            WalletPage(embedded: true),
+            WalletPage(embedded: true, refreshToken: _walletRefreshToken),
             title: 'Wallet',
           ),
-          _Tab(
+          const _Tab(
             AppNavItem(
               label: 'Profile',
               icon: Icons.person_outline_rounded,
@@ -248,21 +251,35 @@ class _RoleShellState extends State<RoleShell> {
     }
   }
 
-  List<AppNavItem> _navItems(int unreadMessages) {
+  List<AppNavItem> _navItems(List<_Tab> tabs, int unreadMessages) {
     return [
-      for (final tab in _baseTabs)
+      for (final tab in tabs)
         AppNavItem(
           label: tab.item.label,
           icon: tab.item.icon,
           activeIcon: tab.item.activeIcon,
-          badgeCount: tab.item.label == 'Chats' ? unreadMessages : 0,
+          badgeText: tab.item.label == 'Chats'
+              ? (unreadMessages == 0
+                    ? null
+                    : (unreadMessages > 99 ? '99+' : '$unreadMessages'))
+              : null,
         ),
     ];
   }
 
+  void _selectTab(List<_Tab> tabs, int index) {
+    setState(() {
+      if (tabs[index].item.label == 'Wallet') {
+        _walletRefreshToken++;
+      }
+      _index = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final current = _baseTabs[_index];
+    final tabs = _buildTabs();
+    final current = tabs[_index];
     return BlocProvider<DashboardCubit>(
       create: (_) => _cubit(),
       child: BlocBuilder<DashboardCubit, DashboardState>(
@@ -278,15 +295,15 @@ class _RoleShellState extends State<RoleShell> {
             ),
             appBar: current.title == null
                 ? null
-                : AppBar(title: Text(current.title!)),
+                : AppBar(title: Text(context.tr(current.title!))),
             body: IndexedStack(
               index: _index,
-              children: [for (final t in _baseTabs) t.body],
+              children: [for (final t in tabs) t.body],
             ),
             bottomNavigationBar: AppBottomNavigation(
-              items: _navItems(state.unreadMessagesCount),
+              items: _navItems(tabs, state.unreadMessagesCount),
               currentIndex: _index,
-              onTap: (i) => setState(() => _index = i),
+              onTap: (i) => _selectTab(tabs, i),
             ),
           );
         },

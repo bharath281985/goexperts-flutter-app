@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../../../core/errors/failures.dart';
 import '../../../../app/config/app_config.dart';
 import '../../../../core/auth/token_role_helper.dart';
@@ -6,6 +8,7 @@ import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/utils/enums.dart';
 import '../../../../core/utils/result.dart';
 import '../../../../core/utils/subscription_status.dart';
+import '../../domain/entities/current_subscription.dart';
 import '../../domain/entities/subscription_plan.dart';
 import '../../domain/repositories/subscription_repository.dart';
 
@@ -42,7 +45,7 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
         return ApiEndpoints.founderSubscriptionsCurrent;
       case UserRole.freelancer:
       default:
-        return ApiEndpoints.freelancerSubscription;
+        return ApiEndpoints.subscriptionCurrent;
     }
   }
 
@@ -105,7 +108,7 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
   }
 
   @override
-  Future<Result<String?>> getCurrentPlanId() async {
+  Future<Result<CurrentSubscription?>> getCurrentSubscription() async {
     if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
     final role = await _role();
     final res = await _api.getEnvelope<Map<String, dynamic>?>(
@@ -113,22 +116,43 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
       parser: (envelope) {
         final data = envelope.data;
         if (data == null) return null;
-        if (data is Map<String, dynamic>) {
-          return data;
-        }
+        if (data is Map<String, dynamic>) return data;
+        if (data is Map) return Map<String, dynamic>.from(data);
         return null;
       },
     );
-    return res.fold((f) => Err(f), (data) {
-      if (data == null) return const Success<String?>(null);
-      final status = data['status']?.toString().toLowerCase();
-      if (status == 'none' || status == 'inactive') {
+    return res.fold(
+      (f) {
+        if (f is NotFoundFailure) {
+          return const Success<CurrentSubscription?>(null);
+        }
+        return Err(f);
+      },
+      (data) {
+        if (data == null || data.isEmpty) {
+          return const Success<CurrentSubscription?>(null);
+        }
+        final status = data['status']?.toString().toLowerCase();
+        if (status == 'none' || status == 'inactive') {
+          return const Success<CurrentSubscription?>(null);
+        }
+        return Success(CurrentSubscription.fromApiJson(data));
+      },
+    );
+  }
+
+  @override
+  Future<Result<String?>> getCurrentPlanId() async {
+    if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
+    final res = await getCurrentSubscription();
+    return res.fold(Err.new, (subscription) {
+      if (subscription == null) {
         return const Success<String?>(null);
       }
       return Success(
-        data['planId']?.toString() ??
-            (data['plan'] as Map?)?['id']?.toString() ??
-            data['id']?.toString(),
+        subscription.planId.isNotEmpty
+            ? subscription.planId
+            : subscription.plan.id,
       );
     });
   }
@@ -253,23 +277,50 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
         (json['yearlyPrice'] as num?)?.toDouble() ??
         (monthly * 10);
 
-    List<String> features = const [];
-    final rawFeatures = json['features'];
-    if (rawFeatures is List) {
-      features = rawFeatures.map((e) => e.toString()).toList();
-    }
-
     return SubscriptionPlan(
       id: json['id']?.toString() ?? '',
       name: json['name'] as String? ?? 'Plan',
       priceMonthly: monthly,
       priceYearly: yearly,
-      features: features,
+      features: _stringList(json['features']),
       tagline: json['tagline'] as String? ?? '',
+      duration: json['duration']?.toString() ?? '',
+      limits: _map(json['limits']),
       isPopular: json['isPopular'] as bool? ??
           json['popular'] as bool? ??
           false,
     );
+  }
+
+  static List<String> _stringList(dynamic raw) {
+    if (raw is List) {
+      return raw.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+    }
+    if (raw is String && raw.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          return decoded
+              .map((e) => e.toString())
+              .where((e) => e.isNotEmpty)
+              .toList();
+        }
+      } catch (_) {}
+      return [raw];
+    }
+    return const [];
+  }
+
+  static Map<String, dynamic> _map(dynamic raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is String && raw.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+    }
+    return const {};
   }
 
   Future<Result<T>> _apiNotConfigured<T>() async =>

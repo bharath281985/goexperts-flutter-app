@@ -141,7 +141,7 @@ class WalletRepositoryImpl implements WalletRepository {
     Map<String, dynamic>? upiDetails,
   }) async {
     if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
-    return _api.postEnvelope<String>(
+    return _api.postEnvelopeAcceptingHttpSuccess<String>(
       ApiEndpoints.freelancerWalletWithdraw,
       body: {
         'amount': amount,
@@ -152,6 +152,28 @@ class WalletRepositoryImpl implements WalletRepository {
       parser: (envelope) => envelope.message?.trim().isNotEmpty == true
           ? envelope.message!.trim()
           : 'Withdrawal requested',
+    );
+  }
+
+  @override
+  Future<Result<String>> addMoney({
+    required double amount,
+    required String gateway,
+    required String currency,
+    required String purpose,
+  }) async {
+    if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
+    return _api.postEnvelopeAcceptingHttpSuccess<String>(
+      ApiEndpoints.clientPaymentsInitiate,
+      body: {
+        'amount': amount,
+        'gateway': gateway,
+        'currency': currency,
+        'purpose': purpose,
+      },
+      parser: (envelope) => envelope.message?.trim().isNotEmpty == true
+          ? envelope.message!.trim()
+          : 'Payment initiated successfully',
     );
   }
 
@@ -169,8 +191,20 @@ class WalletRepositoryImpl implements WalletRepository {
           DateTime.tryParse(json['createdAt'] as String? ?? '') ??
           DateTime.now(),
       reference: json['reference'] as String? ?? '',
-      status: json['status'] as String? ?? 'Completed',
+      status: _capitalize(
+        json['status'] as String? ??
+        json['transactionStatus'] as String? ??
+        json['transaction_status'] as String? ??
+        json['paymentStatus'] as String? ??
+        'Completed',
+      ),
+      direction: json['direction'] as String? ?? '',
     );
+  }
+
+  static String _capitalize(String s) {
+    if (s.isEmpty) return s;
+    return s[0].toUpperCase() + s.substring(1).toLowerCase();
   }
 
   static Invoice _invoiceFromJson(Map<String, dynamic> json) {

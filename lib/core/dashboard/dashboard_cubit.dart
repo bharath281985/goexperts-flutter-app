@@ -8,6 +8,7 @@ import '../../features/investor_dashboard/domain/entities/investor.dart';
 import '../../features/investor_dashboard/domain/repositories/investor_repository.dart';
 import '../../features/meetings/domain/entities/meeting.dart';
 import '../../features/meetings/domain/repositories/meeting_repository.dart';
+import '../../features/messages/domain/repositories/message_repository.dart';
 import '../../features/projects/domain/entities/project.dart';
 import '../../features/projects/domain/repositories/project_repository.dart';
 import '../../features/startup_ideas/domain/entities/startup.dart';
@@ -126,6 +127,7 @@ class DashboardCubit extends Cubit<DashboardState> {
     required this.startupRepository,
     required this.investorRepository,
     required this.meetingRepository,
+    required this.messageRepository,
     required this.walletRepository,
     required this.apiClient,
   }) : super(const DashboardState());
@@ -136,6 +138,7 @@ class DashboardCubit extends Cubit<DashboardState> {
   final StartupRepository startupRepository;
   final InvestorRepository investorRepository;
   final MeetingRepository meetingRepository;
+  final MessageRepository messageRepository;
   final WalletRepository walletRepository;
   final ApiClientHelper apiClient;
 
@@ -200,6 +203,8 @@ class DashboardCubit extends Cubit<DashboardState> {
             startups: startups.valueOrNull?.items ?? const [],
             activeProjectsCount: activeDealsCount,
             monthlyEarnings: calculatedPortfolioValue,
+          next = next.copyWith(
+            startups: startups.valueOrNull?.items ?? const [],
           );
           break;
         case UserRole.founder:
@@ -345,6 +350,11 @@ class DashboardCubit extends Cubit<DashboardState> {
             }).toList();
           }
 
+          final chart =
+              (data['charts']?['pipeline'] as List?)
+                  ?.map((e) => (e as num?)?.toDouble() ?? 0)
+                  .toList() ??
+              const <double>[];
           next = next.copyWith(
             monthlyEarnings: portfolioValue,
             activeProjectsCount: activeDeals,
@@ -411,6 +421,17 @@ class DashboardCubit extends Cubit<DashboardState> {
           );
         });
       }
+
+      final conversations = await messageRepository.getConversations(
+        const QueryParams(page: 1, pageSize: 50),
+      );
+      conversations.fold((_) {}, (page) {
+        final unreadMessages = page.items.fold<int>(
+          0,
+          (total, conversation) => total + conversation.unreadCount,
+        );
+        next = next.copyWith(unreadMessagesCount: unreadMessages);
+      });
 
       emit(next);
     } catch (_) {

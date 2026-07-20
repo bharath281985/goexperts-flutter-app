@@ -108,9 +108,12 @@ class _AppFilterBottomSheetState extends State<AppFilterBottomSheet> {
               padding: const EdgeInsets.symmetric(horizontal: AppSizes.lg),
               child: Row(
                 children: [
-                  Text('Filters', style: context.text.titleLarge),
+                  Text(context.tr('Filters'), style: context.text.titleLarge),
                   const Spacer(),
-                  TextButton(onPressed: _reset, child: const Text('Reset')),
+                  TextButton(
+                    onPressed: _reset,
+                    child: Text(context.tr('Reset')),
+                  ),
                 ],
               ),
             ),
@@ -233,9 +236,7 @@ class _SearchableMultiPick extends StatelessWidget {
     final query = searchQuery.trim().toLowerCase();
     final filtered = query.isEmpty
         ? options
-        : options
-              .where((o) => o.label.toLowerCase().contains(query))
-              .toList();
+        : options.where((o) => o.label.toLowerCase().contains(query)).toList();
     final selectedLabels = options
         .where((o) => selected.contains(o.value))
         .map((o) => o.label)
@@ -244,12 +245,12 @@ class _SearchableMultiPick extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: context.text.titleSmall),
+        Text(context.tr(title), style: context.text.titleSmall),
         AppSizes.vGapSm,
         TextField(
           onChanged: onSearchChanged,
           decoration: InputDecoration(
-            hintText: hint,
+            hintText: context.tr(hint),
             prefixIcon: const Icon(Icons.search_rounded),
             isDense: true,
             border: OutlineInputBorder(
@@ -263,12 +264,15 @@ class _SearchableMultiPick extends StatelessWidget {
             spacing: AppSizes.sm,
             runSpacing: AppSizes.sm,
             children: [
-              for (final option in options.where((o) => selected.contains(o.value)))
+              for (final option in options.where(
+                (o) => selected.contains(o.value),
+              ))
                 InputChip(
-                  label: Text(option.label),
+                  label: Text(context.tr(option.label)),
                   selected: true,
                   onDeleted: () {
-                    final next = Set<String>.from(selected)..remove(option.value);
+                    final next = Set<String>.from(selected)
+                      ..remove(option.value);
                     onChanged(next);
                   },
                 ),
@@ -282,9 +286,11 @@ class _SearchableMultiPick extends StatelessWidget {
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppSizes.md),
                   child: Text(
-                    'No matches',
+                    context.tr('No matches'),
                     style: context.text.bodySmall?.copyWith(
-                      color: context.text.bodySmall?.color?.withValues(alpha: 0.7),
+                      color: context.text.bodySmall?.color?.withValues(
+                        alpha: 0.7,
+                      ),
                     ),
                   ),
                 )
@@ -300,7 +306,7 @@ class _SearchableMultiPick extends StatelessWidget {
                       controlAffinity: ListTileControlAffinity.leading,
                       value: isSelected,
                       activeColor: AppColors.primary,
-                      title: Text(option.label),
+                      title: Text(context.tr(option.label)),
                       onChanged: (_) {
                         final next = Set<String>.from(selected);
                         if (isSelected) {

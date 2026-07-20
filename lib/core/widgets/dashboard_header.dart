@@ -4,12 +4,18 @@ import 'package:go_router/go_router.dart';
 import '../../app/constants/app_sizes.dart';
 import '../../app/router/route_names.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../extensions/context_extensions.dart';
 import 'app_avatar.dart';
 import 'app_gradient_header.dart';
 
 /// Gradient greeting header shared by all role home screens.
 class DashboardHeader extends StatelessWidget {
-  const DashboardHeader({super.key, required this.subtitle, this.onMenu, this.unread = 0});
+  const DashboardHeader({
+    super.key,
+    required this.subtitle,
+    this.onMenu,
+    this.unread = 0,
+  });
 
   final String subtitle;
   final VoidCallback? onMenu;
@@ -44,31 +50,60 @@ class DashboardHeader extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('$_greeting,',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13)),
-                    Text(firstName,
-                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(
+                      '${context.tr(_greeting)},',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      firstName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
-              _iconButton(context, Icons.search_rounded, () => context.push(Routes.search)),
+              _iconButton(
+                context,
+                Icons.search_rounded,
+                () => context.push(Routes.search),
+              ),
               AppSizes.hGapSm,
               Badge(
                 isLabelVisible: unread > 0,
                 label: Text('$unread'),
-                child: _iconButton(context, Icons.notifications_none_rounded,
-                    () => context.push(Routes.notifications)),
+                child: _iconButton(
+                  context,
+                  Icons.notifications_none_rounded,
+                  () => context.push(Routes.notifications),
+                ),
               ),
               AppSizes.hGapSm,
               GestureDetector(
                 onTap: () => Scaffold.of(context).openDrawer(),
-                child: AppAvatar(name: user?.fullName ?? 'User', imageUrl: user?.avatarUrl, size: 40),
+                child: AppAvatar(
+                  name: user?.fullName ?? 'User',
+                  imageUrl: user?.avatarUrl,
+                  size: 40,
+                ),
               ),
             ],
           ),
           AppSizes.vGapMd,
-          Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13)),
+          Text(
+            context.tr(subtitle),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 13,
+            ),
+          ),
         ],
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/constants/app_sizes.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
+import '../../../../app/locale/locale_cubit.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/theme_cubit.dart';
 import '../../../../core/extensions/context_extensions.dart';
@@ -10,6 +11,34 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_list_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../domain/repositories/settings_repository.dart';
+
+const _supportedLanguageCodes = [
+  'en',
+  'fr',
+  'hi',
+  'te',
+  'ta',
+  'kn',
+  'ml',
+  'mr',
+  'gu',
+  'bn',
+  'ar',
+];
+
+const _languageNames = {
+  'en': 'English',
+  'fr': 'French',
+  'hi': 'Hindi',
+  'te': 'Telugu',
+  'ta': 'Tamil',
+  'kn': 'Kannada',
+  'ml': 'Malayalam',
+  'mr': 'Marathi',
+  'gu': 'Gujarati',
+  'bn': 'Bengali',
+  'ar': 'Arabic',
+};
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -34,18 +63,16 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _load() async {
+    _language = context.read<LocaleCubit>().state.languageCode;
     final res = await sl<SettingsRepository>().getSettings();
     if (!mounted) return;
-    res.fold(
-      (_) {},
-      (s) {
-        _push = s.pushNotifications;
-        _email = s.emailNotifications;
-        _marketing = s.marketingNotifications;
-        _public = s.publicProfile;
-        _language = s.language;
-      },
-    );
+    res.fold((_) {}, (s) {
+      _push = s.pushNotifications;
+      _email = s.emailNotifications;
+      _marketing = s.marketingNotifications;
+      _public = s.publicProfile;
+      _language = context.read<LocaleCubit>().state.languageCode;
+    });
     setState(() => _loading = false);
   }
 
@@ -62,15 +89,19 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _saving = false);
     res.fold(
       (f) => context.showSnack(f.message),
-      (_) => context.showSnack('Settings updated'),
+      (_) => context.showSnack(context.tr('Settings updated')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final selectedLanguage = context.watch<LocaleCubit>().state.languageCode;
+    final selectedLanguageName =
+        _languageNames[selectedLanguage] ?? selectedLanguage;
+
     return AppScaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(context.tr('Settings')),
         actions: [
           TextButton(
             onPressed: _saving ? null : _save,
@@ -80,7 +111,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Save'),
+                : Text(context.tr('Save')),
           ),
         ],
       ),
@@ -89,33 +120,80 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           if (_loading) const Center(child: CircularProgressIndicator()),
           _group(context, 'Account', [
-            AppListTile(title: 'Edit Profile', leadingIcon: Icons.person_outline_rounded, onTap: () => context.push(Routes.profileCompletion)),
-            AppListTile(title: 'Security Center', leadingIcon: Icons.shield_outlined, onTap: () => context.push(Routes.securityCenter)),
-            AppListTile(title: 'Subscription & Billing', leadingIcon: Icons.workspace_premium_outlined, onTap: () => context.push(Routes.subscriptionsManage)),
+            AppListTile(
+              title: 'Edit Profile',
+              leadingIcon: Icons.person_outline_rounded,
+              onTap: () => context.push(Routes.profileCompletion),
+            ),
+            AppListTile(
+              title: 'Security Center',
+              leadingIcon: Icons.shield_outlined,
+              onTap: () => context.push(Routes.securityCenter),
+            ),
+            AppListTile(
+              title: 'Subscription & Billing',
+              leadingIcon: Icons.workspace_premium_outlined,
+              onTap: () => context.push(Routes.subscriptionsManage),
+            ),
           ]),
           AppSizes.vGapLg,
           _group(context, 'Preferences', [
             BlocBuilder<ThemeCubit, ThemeMode>(
               builder: (context, mode) => SwitchListTile(
                 secondary: const Icon(Icons.dark_mode_outlined),
-                title: const Text('Dark Mode'),
+                title: Text(context.tr('Dark Mode')),
                 value: mode == ThemeMode.dark,
                 onChanged: (_) => context.read<ThemeCubit>().toggle(),
               ),
             ),
-            AppListTile(title: 'Language', subtitle: _language.toUpperCase(), leadingIcon: Icons.language_rounded, onTap: () => _languageSheet(context)),
-            AppListTile(title: 'Currency', subtitle: 'INR (₹)', leadingIcon: Icons.currency_rupee_rounded, onTap: () {}),
+            AppListTile(
+              title: 'Language',
+              subtitle:
+                  '${context.tr(selectedLanguageName)} (${selectedLanguage.toUpperCase()})',
+              leadingIcon: Icons.language_rounded,
+              onTap: () => _languageSheet(context),
+            ),
+            AppListTile(
+              title: 'Currency',
+              subtitle: 'INR (₹)',
+              leadingIcon: Icons.currency_rupee_rounded,
+              onTap: () {},
+            ),
           ]),
           AppSizes.vGapLg,
           _group(context, 'Notifications', [
-            SwitchListTile(secondary: const Icon(Icons.notifications_outlined), title: const Text('Push Notifications'), value: _push, onChanged: (v) => setState(() => _push = v)),
-            SwitchListTile(secondary: const Icon(Icons.email_outlined), title: const Text('Email Updates'), value: _email, onChanged: (v) => setState(() => _email = v)),
-            SwitchListTile(secondary: const Icon(Icons.campaign_outlined), title: const Text('Marketing'), value: _marketing, onChanged: (v) => setState(() => _marketing = v)),
+            SwitchListTile(
+              secondary: const Icon(Icons.notifications_outlined),
+              title: Text(context.tr('Push Notifications')),
+              value: _push,
+              onChanged: (v) => setState(() => _push = v),
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.email_outlined),
+              title: Text(context.tr('Email Updates')),
+              value: _email,
+              onChanged: (v) => setState(() => _email = v),
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.campaign_outlined),
+              title: Text(context.tr('Marketing')),
+              value: _marketing,
+              onChanged: (v) => setState(() => _marketing = v),
+            ),
           ]),
           AppSizes.vGapLg,
           _group(context, 'Privacy', [
-            SwitchListTile(secondary: const Icon(Icons.visibility_outlined), title: const Text('Public Profile'), value: _public, onChanged: (v) => setState(() => _public = v)),
-            AppListTile(title: 'Blocked Users', leadingIcon: Icons.block_rounded, onTap: () {}),
+            SwitchListTile(
+              secondary: const Icon(Icons.visibility_outlined),
+              title: Text(context.tr('Public Profile')),
+              value: _public,
+              onChanged: (v) => setState(() => _public = v),
+            ),
+            AppListTile(
+              title: 'Blocked Users',
+              leadingIcon: Icons.block_rounded,
+              onTap: () {},
+            ),
             AppListTile(
               title: 'Privacy Policy',
               leadingIcon: Icons.privacy_tip_outlined,
@@ -129,13 +207,22 @@ class _SettingsPageState extends State<SettingsPage> {
           ]),
           AppSizes.vGapLg,
           _group(context, 'Support', [
-            AppListTile(title: 'Help Center', leadingIcon: Icons.help_outline_rounded, onTap: () => context.push(Routes.support)),
+            AppListTile(
+              title: 'Help Center',
+              leadingIcon: Icons.help_outline_rounded,
+              onTap: () => context.push(Routes.support),
+            ),
             AppListTile(
               title: 'About Go Experts',
               leadingIcon: Icons.info_outline_rounded,
               onTap: () => context.push(Routes.privacyPolicy),
             ),
-            AppListTile(title: 'App Version', subtitle: '1.0.0', leadingIcon: Icons.smartphone_outlined, showChevron: false),
+            AppListTile(
+              title: 'App Version',
+              subtitle: '1.0.0',
+              leadingIcon: Icons.smartphone_outlined,
+              showChevron: false,
+            ),
           ]),
         ],
       ),
@@ -143,7 +230,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _languageSheet(BuildContext context) {
-    const langs = ['en', 'hi', 'te', 'ta', 'kn', 'ml', 'mr', 'gu', 'bn', 'ar'];
+    final selectedLanguage = context.read<LocaleCubit>().state.languageCode;
+
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -152,12 +240,17 @@ class _SettingsPageState extends State<SettingsPage> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            for (final l in langs)
+            for (final l in _supportedLanguageCodes)
               ListTile(
-                title: Text(l),
-                trailing: l == _language ? const Icon(Icons.check_rounded) : null,
+                title: Text(
+                  '${context.tr(_languageNames[l] ?? l)} (${l.toUpperCase()})',
+                ),
+                trailing: l == selectedLanguage
+                    ? const Icon(Icons.check_rounded)
+                    : null,
                 onTap: () {
                   setState(() => _language = l);
+                  context.read<LocaleCubit>().setLanguage(l);
                   Navigator.pop(context);
                 },
               ),
@@ -167,14 +260,23 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _group(BuildContext context, String title, List<Widget> children) => AppCard(
+  Widget _group(BuildContext context, String title, List<Widget> children) =>
+      AppCard(
         padding: const EdgeInsets.symmetric(vertical: AppSizes.xs),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(AppSizes.md, AppSizes.sm, AppSizes.md, AppSizes.xs),
-              child: Text(title.toUpperCase(), style: context.text.labelSmall?.copyWith(letterSpacing: 1)),
+              padding: const EdgeInsets.fromLTRB(
+                AppSizes.md,
+                AppSizes.sm,
+                AppSizes.md,
+                AppSizes.xs,
+              ),
+              child: Text(
+                context.tr(title).toUpperCase(),
+                style: context.text.labelSmall?.copyWith(letterSpacing: 1),
+              ),
             ),
             ...children,
           ],

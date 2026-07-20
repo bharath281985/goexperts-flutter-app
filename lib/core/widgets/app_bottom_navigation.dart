@@ -10,12 +10,14 @@ class AppNavItem {
     required this.icon,
     required this.activeIcon,
     this.badgeCount = 0,
+    this.badgeText,
   });
 
   final String label;
   final IconData icon;
   final IconData activeIcon;
   final int badgeCount;
+  final String? badgeText;
 }
 
 /// Branded bottom navigation bar shared by every role shell.
@@ -80,13 +82,13 @@ class _NavCell extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Badge(
-              isLabelVisible: item.badgeCount > 0,
-              label: Text('${item.badgeCount}'),
+              isLabelVisible: item.badgeText != null ? item.badgeText!.isNotEmpty : item.badgeCount > 0,
+              label: Text(item.badgeText ?? '${item.badgeCount}'),
               child: Icon(selected ? item.activeIcon : item.icon, color: color, size: 24),
             ),
             const SizedBox(height: 3),
             Text(
-              item.label,
+              context.tr(item.label),
               style: TextStyle(
                 color: color,
                 fontSize: 11,

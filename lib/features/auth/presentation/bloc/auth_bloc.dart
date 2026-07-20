@@ -199,11 +199,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(
-      state.copyWith(
-        isSubmitting: true,
-        clearError: true,
-        clearSuccess: true,
-      ),
+      state.copyWith(isSubmitting: true, clearError: true, clearSuccess: true),
     );
     final result = await _repository.completeProfile(
       event.data,
@@ -251,20 +247,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     // Unlock immediately so the router can leave SubscriptionSelectionPage.
-    emit(
-      state.copyWith(subscriptionStatus: SubscriptionGateStatus.active),
-    );
+    emit(state.copyWith(subscriptionStatus: SubscriptionGateStatus.active));
 
     // Persist locally so a later refresh/login does not bounce back here
     // when the free-plan API write is missing or delayed.
     final cached = await _repository.markSubscriptionActive(
-      planId: state.user?.subscriptionPlan ?? state.subscriptionPlanId ?? 'free',
+      planId:
+          state.user?.subscriptionPlan ?? state.subscriptionPlanId ?? 'free',
     );
     final planRes = await _subscriptionRepository.getCurrentPlanId();
-    final planId =
-        planRes.valueOrNull ??
-        state.subscriptionPlanId ??
-        'free';
+    final planId = planRes.valueOrNull ?? state.subscriptionPlanId ?? 'free';
     final planLabel =
         cached.valueOrNull?.subscriptionPlan ??
         state.user?.subscriptionPlan ??

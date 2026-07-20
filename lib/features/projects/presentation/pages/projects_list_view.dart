@@ -50,10 +50,8 @@ class _ProjectsListViewState extends State<ProjectsListView> {
 
   Future<void> _bootstrap() async {
     final role = await sl<TokenRoleHelper>().resolve();
-    final categoriesResult = await sl<MasterDataRepository>().getSkillCategories(
-      page: 1,
-      pageSize: 200,
-    );
+    final categoriesResult = await sl<MasterDataRepository>()
+        .getSkillCategories(page: 1, pageSize: 200);
     if (!mounted) return;
     setState(() {
       _role = role;
@@ -185,12 +183,14 @@ class _CreateProjectHeader extends StatelessWidget {
         alignment: Alignment.centerRight,
         child: FilledButton.icon(
           onPressed: () async {
-            final changed = await context.push<bool>(Routes.clientCreateProject);
+            final changed = await context.push<bool>(
+              Routes.clientCreateProject,
+            );
             if (!context.mounted || changed != true) return;
             context.read<ListBloc<Project>>().add(const ListRefreshed());
           },
           icon: const Icon(Icons.add_rounded),
-          label: const Text('Create Project'),
+          label: Text(context.tr('Create Project')),
         ),
       ),
     );

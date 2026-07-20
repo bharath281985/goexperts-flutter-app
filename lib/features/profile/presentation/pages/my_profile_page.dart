@@ -82,8 +82,8 @@ class _MyProfilePageState extends State<MyProfilePage> {
             children: [
               Row(
                 children: [
-                  const Text(
-                    'My Profile',
+                  Text(
+                    context.tr('My Profile'),
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -287,12 +287,12 @@ class _MyProfilePageState extends State<MyProfilePage> {
                   }
                 },
                 child: Row(
-                  children: const [
-                    Icon(Icons.logout_rounded, color: AppColors.danger),
-                    SizedBox(width: AppSizes.md),
+                  children: [
+                    const Icon(Icons.logout_rounded, color: AppColors.danger),
+                    const SizedBox(width: AppSizes.md),
                     Text(
-                      'Log Out',
-                      style: TextStyle(
+                      context.tr('Log Out'),
+                      style: const TextStyle(
                         color: AppColors.danger,
                         fontWeight: FontWeight.w600,
                       ),
@@ -327,7 +327,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
   Widget _stat(BuildContext context, String value, String label) => Column(
     children: [
       Text(value, style: context.text.titleMedium),
-      Text(label, style: context.text.labelSmall),
+      Text(context.tr(label), style: context.text.labelSmall),
     ],
   );
 
@@ -348,7 +348,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
                 AppSizes.xs,
               ),
               child: Text(
-                title.toUpperCase(),
+                context.tr(title).toUpperCase(),
                 style: context.text.labelSmall?.copyWith(letterSpacing: 1),
               ),
             ),

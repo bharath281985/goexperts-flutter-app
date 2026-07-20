@@ -12,6 +12,7 @@ class WalletTransaction extends Equatable {
     required this.date,
     this.reference = '',
     this.status = 'Completed',
+    this.direction = '',
   });
 
   final String id;
@@ -21,12 +22,13 @@ class WalletTransaction extends Equatable {
   final DateTime date;
   final String reference;
   final String status;
+  final String direction;
 
   bool get isCredit =>
       type == TransactionType.credit || type == TransactionType.refund;
 
   @override
-  List<Object?> get props => [id, amount, type, status];
+  List<Object?> get props => [id, amount, type, status, direction];
 }
 
 /// Aggregate wallet balances for the wallet dashboard.
