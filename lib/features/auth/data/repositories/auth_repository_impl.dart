@@ -85,14 +85,15 @@ class AuthRepositoryImpl implements AuthRepository {
       caseSensitive: false,
     );
     final incoming = planId?.trim();
-    final readablePlan = (incoming != null &&
+    final readablePlan =
+        (incoming != null &&
             incoming.isNotEmpty &&
             !uuidPattern.hasMatch(incoming))
         ? incoming
         : (current.subscriptionPlan != null &&
-                !uuidPattern.hasMatch(current.subscriptionPlan!))
-            ? current.subscriptionPlan
-            : 'Starter';
+              !uuidPattern.hasMatch(current.subscriptionPlan!))
+        ? current.subscriptionPlan
+        : 'Starter';
 
     final updated = current.copyWith(
       subscriptionStatus: 'active',
@@ -130,10 +131,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return _mockModeDisabled();
     }
     try {
-      final user = await _api.login(
-        email: email,
-        password: password,
-      );
+      final user = await _api.login(email: email, password: password);
       final merged = _mergeWithCachedCompletion(user);
       await _cacheUser(merged);
       await _chatSocket?.connect();
@@ -235,11 +233,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     if (AppConfig.useMockData) return _mockModeDisabled();
     try {
-      await _api.verifyOtp(
-        code: code,
-        phone: phone,
-        countryCode: countryCode,
-      );
+      await _api.verifyOtp(code: code, phone: phone, countryCode: countryCode);
       return const Success(true);
     } catch (e) {
       return Err(_mapError(e));
@@ -313,6 +307,11 @@ class AuthRepositoryImpl implements AuthRepository {
       }
       return Err(_mapError(e));
     }
+  }
+
+  @override
+  Future<void> updateCachedUser(AppUser user) async {
+    await _cacheUser(user);
   }
 
   @override

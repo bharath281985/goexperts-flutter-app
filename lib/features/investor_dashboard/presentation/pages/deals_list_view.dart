@@ -12,6 +12,7 @@ import '../../../../core/widgets/app_status_chip.dart';
 import '../../../../core/widgets/catalog_view.dart';
 import '../../domain/entities/investor.dart';
 import '../../domain/repositories/investor_repository.dart';
+import '../../../meetings/presentation/pages/meetings_list_view.dart';
 
 /// Embeddable deal-room catalog.
 class DealsListView extends StatelessWidget {
@@ -38,35 +39,121 @@ class _DealCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      onTap: () => context.push('${Routes.startupDetails}/${deal.id}'),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              AppAvatar(name: deal.startupName, imageUrl: deal.startupLogo, size: 46),
-              AppSizes.hGapMd,
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(deal.startupName, style: context.text.titleSmall),
-                    Text('${deal.founderName} · ${deal.stage}', style: context.text.bodySmall),
-                  ],
-                ),
+          InkWell(
+            onTap: () => context.push('${Routes.startupDetails}/${deal.id}'),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSizes.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      AppAvatar(
+                        name: deal.startupName,
+                        imageUrl: deal.startupLogo,
+                        size: 46,
+                      ),
+                      AppSizes.hGapMd,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              deal.startupName,
+                              style: context.text.titleSmall,
+                            ),
+                            Text(
+                              '${deal.founderName} · ${deal.stage}',
+                              style: context.text.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      AppStatusChip.status(deal.status, dense: true),
+                    ],
+                  ),
+                  AppSizes.vGapMd,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _stat(
+                          context,
+                          'Amount',
+                          Formatters.compactCurrency(deal.amount),
+                        ),
+                      ),
+                      Expanded(
+                        child: _stat(
+                          context,
+                          'Equity',
+                          '${deal.equity.toStringAsFixed(0)}%',
+                        ),
+                      ),
+                      Expanded(
+                        child: _stat(context, 'Docs', '${deal.documentsCount}'),
+                      ),
+                      if (deal.hasNda)
+                        const AppStatusChip(
+                          label: 'NDA',
+                          color: AppColors.info,
+                          icon: Icons.lock_outline_rounded,
+                          dense: true,
+                        ),
+                    ],
+                  ),
+                ],
               ),
-              AppStatusChip.status(deal.status, dense: true),
-            ],
+            ),
           ),
-          AppSizes.vGapMd,
-          Row(
-            children: [
-              Expanded(child: _stat(context, 'Amount', Formatters.compactCurrency(deal.amount))),
-              Expanded(child: _stat(context, 'Equity', '${deal.equity.toStringAsFixed(0)}%')),
-              Expanded(child: _stat(context, 'Docs', '${deal.documentsCount}')),
-              if (deal.hasNda)
-                const AppStatusChip(label: 'NDA', color: AppColors.info, icon: Icons.lock_outline_rounded, dense: true),
-            ],
+          Padding(
+            padding: const EdgeInsets.only(
+              left: AppSizes.lg,
+              right: AppSizes.lg,
+              bottom: AppSizes.lg,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(40),
+                    ),
+                    icon: const Icon(Icons.person_outline_rounded, size: 16),
+                    label: const Text('View Founder'),
+                    onPressed: () {
+                      // publicFounder → /public/startups/:startupId
+                      final startupId = deal.founderId ?? deal.id;
+                      context.push('${Routes.publicFounder}/$startupId');
+                    },
+                  ),
+                ),
+                AppSizes.hGapSm,
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(40),
+                    ),
+                    icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                    label: const Text('Schedule'),
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => ScheduleMeetingSheet(
+                          onScheduled: () {},
+                          preselectedParticipantId: deal.founderId ?? deal.id,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -74,10 +161,10 @@ class _DealCard extends StatelessWidget {
   }
 
   Widget _stat(BuildContext context, String label, String value) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(value, style: context.text.titleSmall),
-          Text(label, style: context.text.labelSmall),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(value, style: context.text.titleSmall),
+      Text(label, style: context.text.labelSmall),
+    ],
+  );
 }

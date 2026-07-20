@@ -1,5 +1,8 @@
 import 'package:file_picker/file_picker.dart';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../app/constants/app_sizes.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../../core/extensions/context_extensions.dart';
@@ -11,6 +14,7 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_primary_button.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/widgets/profile_avatar_editor.dart';
 import '../../domain/entities/company.dart';
 import '../../domain/repositories/company_repository.dart';
 
@@ -31,6 +35,7 @@ class _ClientCompanyProfilePageState extends State<ClientCompanyProfilePage> {
   bool _loading = true;
   bool _saving = false;
   Company? _company;
+  String? _localLogoPath;
 
   @override
   void initState() {
@@ -66,31 +71,35 @@ class _ClientCompanyProfilePageState extends State<ClientCompanyProfilePage> {
     setState(() => _saving = true);
     final res = await sl<CompanyRepository>().updateClientProfile({
       'name': _name.text.trim(),
+      'company': _name.text.trim(),
       'industry': _industry.text.trim(),
       'gst': _gst.text.trim(),
       'website': _website.text.trim(),
       'address': _address.text.trim(),
-    });
+    }, logoPath: _localLogoPath);
     if (!mounted) return;
-    setState(() => _saving = false);
+    setState(() {
+      _saving = false;
+      if (res.isSuccess) {
+        _localLogoPath = null;
+      }
+    });
     res.fold((f) => context.showSnack(f.message), (c) {
       _company = c;
       context.showSnack('Company profile updated');
+      final currentUser = context.read<AuthBloc>().state.user;
+      if (currentUser != null) {
+        context.read<AuthBloc>().add(
+          AuthUserUpdated(
+            currentUser.copyWith(
+              fullName: _name.text.trim(),
+              avatarUrl: c.logoUrl,
+            ),
+          ),
+        );
+      }
+      Navigator.of(context).pop();
     });
-  }
-
-  Future<void> _uploadLogo() async {
-    final picked = await FilePicker.platform.pickFiles(allowMultiple: false);
-    if (picked == null || picked.files.single.path == null) return;
-    final res = await sl<CompanyRepository>().uploadClientLogo(
-      picked.files.single.path!,
-    );
-    if (!mounted) return;
-    res.fold(
-      (f) => context.showSnack(f.message),
-      (_) => context.showSnack('Logo uploaded'),
-    );
-    await _load();
   }
 
   Future<void> _uploadDoc() async {
@@ -130,6 +139,12 @@ class _ClientCompanyProfilePageState extends State<ClientCompanyProfilePage> {
                   ),
                 ),
                 AppSizes.vGapMd,
+                ProfileAvatarEditor(
+                  localPath: _localLogoPath,
+                  networkUrl: _company?.logoUrl,
+                  onPathPicked: (path) => setState(() => _localLogoPath = path),
+                ),
+                AppSizes.vGapMd,
                 AppTextField(
                   controller: _name,
                   label: 'Company Name',
@@ -161,22 +176,9 @@ class _ClientCompanyProfilePageState extends State<ClientCompanyProfilePage> {
                   maxLines: 2,
                 ),
                 AppSizes.vGapLg,
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppPrimaryButton(
-                        label: 'Upload Logo',
-                        onPressed: _uploadLogo,
-                      ),
-                    ),
-                    AppSizes.hGapMd,
-                    Expanded(
-                      child: AppPrimaryButton(
-                        label: 'Upload Document',
-                        onPressed: _uploadDoc,
-                      ),
-                    ),
-                  ],
+                AppPrimaryButton(
+                  label: 'Upload Document',
+                  onPressed: _uploadDoc,
                 ),
                 AppSizes.vGapMd,
                 AppPrimaryButton(
@@ -284,30 +286,27 @@ class _ClientReportsHubPageState extends State<ClientReportsHubPage> {
       metadata: const {'source': 'client_payments_page'},
     );
     if (!mounted) return;
-    await result.fold(
-      (f) async => context.showSnack(f.message),
-      (paid) async {
-        final sdk = paid.checkout;
-        final verify = await checkout.verify(
-          paymentId: paid.payment.paymentId,
-          gateway: paid.payment.gateway,
-          purpose: 'client_payment',
-          verification: {
-            'status': 'success',
-            'orderId': paid.payment.orderId,
-            'txnid': paid.payment.orderId,
-            ...sdk.raw,
-            if (sdk.raw['payment_response'] is Map)
-              ...Map<String, dynamic>.from(sdk.raw['payment_response'] as Map),
-          },
-        );
-        if (!mounted) return;
-        verify.fold(
-          (f) => context.showSnack(f.message),
-          (_) => context.showSnack('Payment completed and verified'),
-        );
-      },
-    );
+    await result.fold((f) async => context.showSnack(f.message), (paid) async {
+      final sdk = paid.checkout;
+      final verify = await checkout.verify(
+        paymentId: paid.payment.paymentId,
+        gateway: paid.payment.gateway,
+        purpose: 'client_payment',
+        verification: {
+          'status': 'success',
+          'orderId': paid.payment.orderId,
+          'txnid': paid.payment.orderId,
+          ...sdk.raw,
+          if (sdk.raw['payment_response'] is Map)
+            ...Map<String, dynamic>.from(sdk.raw['payment_response'] as Map),
+        },
+      );
+      if (!mounted) return;
+      verify.fold(
+        (f) => context.showSnack(f.message),
+        (_) => context.showSnack('Payment completed and verified'),
+      );
+    });
   }
 
   Future<void> _verifyPayment() async {

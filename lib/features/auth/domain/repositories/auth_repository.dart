@@ -46,5 +46,6 @@ abstract class AuthRepository {
   });
 
   Future<Result<AppUser>> currentUser();
+  Future<void> updateCachedUser(AppUser user);
   Future<void> logout();
 }

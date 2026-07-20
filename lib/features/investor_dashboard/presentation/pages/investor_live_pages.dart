@@ -1,5 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../app/constants/app_sizes.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../../core/extensions/context_extensions.dart';
@@ -11,6 +13,8 @@ import '../../../../core/widgets/app_primary_button.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_location_field.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/widgets/profile_avatar_editor.dart';
+import '../../../../core/utils/result.dart';
 
 class InvestorProfilePage extends StatefulWidget {
   const InvestorProfilePage({super.key});
@@ -29,6 +33,7 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
   final _bio = TextEditingController();
 
   String? _avatarUrl;
+  String? _localAvatarPath;
   bool _loading = true;
   bool _saving = false;
   bool _verified = false;
@@ -61,7 +66,12 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
       final user = m['user'] as Map<String, dynamic>? ?? {};
       _email.text = user['email']?.toString() ?? m['email']?.toString() ?? '';
       _fullName.text =
-          user['fullName']?.toString() ?? m['name']?.toString() ?? '';
+          user['fullName']?.toString() ??
+          user['full_name']?.toString() ??
+          m['fullName']?.toString() ??
+          m['full_name']?.toString() ??
+          m['name']?.toString() ??
+          '';
       _company.text = m['company']?.toString() ?? m['firm']?.toString() ?? '';
       _phone.text = user['phone']?.toString() ?? m['phone']?.toString() ?? '';
       _country.text =
@@ -72,7 +82,11 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
       _city.text = city ?? location ?? '';
 
       _bio.text = m['bio']?.toString() ?? user['bio']?.toString() ?? '';
-      _avatarUrl = user['avatarUrl']?.toString() ?? m['avatarUrl']?.toString();
+      _avatarUrl =
+          user['avatarUrl']?.toString() ??
+          user['avatar_url']?.toString() ??
+          m['avatarUrl']?.toString() ??
+          m['avatar_url']?.toString();
       _verified =
           m['isVerified'] as bool? ??
           m['verified'] as bool? ??
@@ -91,73 +105,70 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
     }
 
     setState(() => _saving = true);
-    final res = await sl<ApiClientHelper>().put<Map<String, dynamic>>(
-      ApiEndpoints.investorProfile,
-      body: {
-        'name': fullName,
-        'fullName': fullName,
-        'company': _company.text.trim(),
-        'firm': _company.text.trim(),
-        'phone': _phone.text.trim(),
-        'country': _country.text.trim(),
-        'city': _city.text.trim(),
-        'location': _city.text.trim(),
-        'bio': _bio.text.trim(),
-        if (_avatarUrl != null) 'avatarUrl': _avatarUrl,
-      },
-      parser: (raw) => Map<String, dynamic>.from(raw as Map),
-    );
-    if (!mounted) return;
-    setState(() => _saving = false);
-    res.fold(
-      (f) => context.showSnack(f.message, isError: true),
-      (_) => context.showSnack('Investor profile updated'),
-    );
-  }
+    final Map<String, dynamic> body = {
+      'name': fullName,
+      'fullName': fullName,
+      'company': _company.text.trim(),
+      'firm': _company.text.trim(),
+      'phone': _phone.text.trim(),
+      'country': _country.text.trim(),
+      'city': _city.text.trim(),
+      'location': _city.text.trim(),
+      'bio': _bio.text.trim(),
+      if (_avatarUrl != null) 'avatarUrl': _avatarUrl,
+    };
 
-  Future<void> _pickAvatar() async {
-    final picked = await FilePicker.platform.pickFiles(type: FileType.image);
-    final path = picked?.files.single.path;
-    if (path == null) return;
-
-    setState(() => _saving = true);
-    final res = await sl<FileUploadHelper>().uploadUrl(
-      path: path,
-      endpoint: ApiEndpoints.filesUpload,
-      fields: {'category': 'avatar'},
-    );
-    if (!mounted) return;
-    setState(() => _saving = false);
-
-    res.fold((f) => context.showSnack(f.message, isError: true), (url) {
-      setState(() => _avatarUrl = url);
-      context.showSnack('Logo uploaded successfully');
-    });
-  }
-
-  Future<void> _uploadDoc() async {
-    final picked = await FilePicker.platform.pickFiles(allowMultiple: false);
-    final path = picked?.files.single.path;
-    if (path == null) return;
-    final direct = await sl<FileUploadHelper>().uploadUrl(
-      path: path,
-      endpoint: ApiEndpoints.investorProfileDocuments,
-    );
-    if (!mounted) return;
-    if (direct.isSuccess) {
-      context.showSnack('Document uploaded');
-      return;
+    final Result<Map<String, dynamic>> res;
+    if (_localAvatarPath != null) {
+      res = await sl<FileUploadHelper>().upload(
+        path: _localAvatarPath!,
+        endpoint: ApiEndpoints.investorProfile,
+        fileField: 'file',
+        method: 'put',
+        fields: body,
+      );
+    } else {
+      res = await sl<ApiClientHelper>().put<Map<String, dynamic>>(
+        ApiEndpoints.investorProfile,
+        body: body,
+        parser: (raw) => Map<String, dynamic>.from(raw as Map),
+      );
     }
-    final fallback = await sl<FileUploadHelper>().uploadUrl(
-      path: path,
-      endpoint: ApiEndpoints.filesUpload,
-      fields: {'category': 'investor_document'},
-    );
+
     if (!mounted) return;
-    fallback.fold(
-      (f) => context.showSnack(f.message),
-      (_) => context.showSnack('Document uploaded via files API'),
-    );
+    setState(() {
+      _saving = false;
+      if (res.isSuccess) {
+        _localAvatarPath = null;
+      }
+    });
+
+    res.fold((f) => context.showSnack(f.message, isError: true), (json) {
+      context.showSnack('Investor profile updated');
+      final url =
+          json['avatarUrl']?.toString() ??
+          json['url']?.toString() ??
+          _avatarUrl;
+      if (url != null) {
+        setState(() {
+          _avatarUrl = url;
+        });
+      }
+      final currentUser = context.read<AuthBloc>().state.user;
+      if (currentUser != null) {
+        context.read<AuthBloc>().add(
+          AuthUserUpdated(
+            currentUser.copyWith(
+              fullName: fullName,
+              location: _city.text.trim(),
+              avatarUrl: _avatarUrl,
+              phone: _phone.text.trim(),
+            ),
+          ),
+        );
+      }
+      Navigator.of(context).pop();
+    });
   }
 
   @override
@@ -183,40 +194,11 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
                   ),
                 ),
                 AppSizes.vGapXl,
-                Center(
-                  child: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Theme.of(
-                          context,
-                        ).disabledColor.withOpacity(0.1),
-                        backgroundImage:
-                            _avatarUrl != null && _avatarUrl!.isNotEmpty
-                            ? NetworkImage(_avatarUrl!)
-                            : null,
-                        child: _avatarUrl == null || _avatarUrl!.isEmpty
-                            ? const Icon(
-                                Icons.person,
-                                size: 50,
-                                color: Colors.grey,
-                              )
-                            : null,
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: IconButton(
-                          style: IconButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
-                            foregroundColor: Colors.white,
-                          ),
-                          icon: const Icon(Icons.edit, size: 20),
-                          onPressed: _pickAvatar,
-                        ),
-                      ),
-                    ],
-                  ),
+                ProfileAvatarEditor(
+                  localPath: _localAvatarPath,
+                  networkUrl: _avatarUrl,
+                  onPathPicked: (path) =>
+                      setState(() => _localAvatarPath = path),
                 ),
                 AppSizes.vGapXl,
                 AppTextField(
@@ -262,12 +244,7 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
                   hint: 'Enter your bio',
                   maxLines: 3,
                 ),
-                AppSizes.vGapLg,
-                AppPrimaryButton(
-                  label: 'Upload Document',
-                  onPressed: _uploadDoc,
-                ),
-                AppSizes.vGapMd,
+
                 AppPrimaryButton(
                   label: 'Save',
                   isLoading: _saving,

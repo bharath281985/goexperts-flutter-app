@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../app/constants/app_colors.dart';
 import '../../app/constants/app_sizes.dart';
 import '../utils/formatters.dart';
@@ -30,6 +31,26 @@ class AppAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final seedColor = AppColors.fromSeed(name);
+    var displayUrl = imageUrl;
+    if (displayUrl != null && displayUrl.contains('localhost:4000')) {
+      displayUrl = displayUrl
+          .replaceAll('http://localhost:4000', 'https://mobileapi.goexperts.in')
+          .replaceAll('localhost:4000', 'mobileapi.goexperts.in');
+    }
+
+    final resolvedUrl = displayUrl != null && displayUrl.isNotEmpty
+        ? ((displayUrl.startsWith('http://') ||
+                  displayUrl.startsWith('https://') ||
+                  displayUrl.startsWith('data:'))
+              ? displayUrl
+              : 'https://mobileapi.goexperts.in${displayUrl.startsWith('/') ? '' : '/'}$displayUrl')
+        : null;
+
+    final bool isSvg =
+        resolvedUrl != null &&
+        (resolvedUrl.split('?').first.toLowerCase().endsWith('.svg') ||
+            resolvedUrl.toLowerCase().contains('/svg'));
+
     final avatar = Container(
       width: size,
       height: size,
@@ -40,13 +61,19 @@ class AppAvatar extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: imageBytes != null
           ? Image.memory(imageBytes!, fit: BoxFit.cover)
-          : (imageUrl != null && imageUrl!.isNotEmpty)
-          ? CachedNetworkImage(
-              imageUrl: imageUrl!,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => _initials(seedColor),
-              errorWidget: (_, __, ___) => _initials(seedColor),
-            )
+          : resolvedUrl != null
+          ? isSvg
+                ? SvgPicture.network(
+                    resolvedUrl,
+                    fit: BoxFit.cover,
+                    placeholderBuilder: (_) => _initials(seedColor),
+                  )
+                : CachedNetworkImage(
+                    imageUrl: resolvedUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => _initials(seedColor),
+                    errorWidget: (_, __, ___) => _initials(seedColor),
+                  )
           : _initials(seedColor),
     );
 

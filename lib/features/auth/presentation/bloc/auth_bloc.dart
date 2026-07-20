@@ -281,7 +281,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 
-  void _onUserUpdated(AuthUserUpdated event, Emitter<AuthState> emit) {
+  Future<void> _onUserUpdated(
+    AuthUserUpdated event,
+    Emitter<AuthState> emit,
+  ) async {
+    await _repository.updateCachedUser(event.user);
     emit(state.copyWith(user: event.user));
   }
 

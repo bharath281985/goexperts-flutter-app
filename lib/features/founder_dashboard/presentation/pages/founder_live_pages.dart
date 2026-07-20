@@ -11,7 +11,9 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_primary_button.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_location_field.dart';
+import '../../../../core/utils/result.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/widgets/profile_avatar_editor.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 
 class FounderPitchDeckLivePage extends StatefulWidget {
@@ -38,6 +40,7 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
   final _city = TextEditingController();
 
   String? _avatarUrl;
+  String? _localAvatarPath;
   bool _loading = true;
   bool _saving = false;
 
@@ -68,44 +71,29 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
       final user = m['user'];
       if (user is Map) {
         _email.text = user['email']?.toString() ?? '';
-        _fullName.text = user['fullName']?.toString() ?? '';
+        _fullName.text =
+            user['fullName']?.toString() ?? user['full_name']?.toString() ?? '';
         _bio.text = user['bio']?.toString() ?? '';
         _phone.text = user['phone']?.toString() ?? '';
         _country.text = user['country']?.toString() ?? '';
         _city.text = user['city']?.toString() ?? '';
-        _avatarUrl = user['avatarUrl']?.toString();
+        _avatarUrl =
+            user['avatarUrl']?.toString() ?? user['avatar_url']?.toString();
       } else {
         _email.text = m['email']?.toString() ?? '';
         _fullName.text =
-            m['fullName']?.toString() ?? m['name']?.toString() ?? '';
+            m['fullName']?.toString() ??
+            m['full_name']?.toString() ??
+            m['name']?.toString() ??
+            '';
         _bio.text = m['bio']?.toString() ?? '';
         _phone.text = m['phone']?.toString() ?? '';
         _country.text = m['country']?.toString() ?? '';
         _city.text = m['city']?.toString() ?? m['location']?.toString() ?? '';
-        _avatarUrl = m['avatarUrl']?.toString();
+        _avatarUrl = m['avatarUrl']?.toString() ?? m['avatar_url']?.toString();
       }
     });
     setState(() => _loading = false);
-  }
-
-  Future<void> _pickAvatar() async {
-    final picked = await FilePicker.platform.pickFiles(type: FileType.image);
-    final path = picked?.files.single.path;
-    if (path == null) return;
-
-    setState(() => _saving = true);
-    final res = await sl<FileUploadHelper>().uploadUrl(
-      path: path,
-      endpoint: ApiEndpoints.filesUpload,
-      fields: {'category': 'avatar'},
-    );
-    if (!mounted) return;
-    setState(() => _saving = false);
-
-    res.fold((f) => context.showSnack(f.message, isError: true), (url) {
-      setState(() => _avatarUrl = url);
-      context.showSnack('Logo uploaded successfully');
-    });
   }
 
   Future<void> _save() async {
@@ -117,24 +105,51 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
     }
 
     setState(() => _saving = true);
-    final res = await sl<ApiClientHelper>().putEnvelope<String>(
-      ApiEndpoints.founderProfile,
-      body: {
-        'fullName': fullName,
-        'name': fullName, // Keep for backward compatibility
-        'bio': _bio.text.trim(),
-        'phone': _phone.text.trim(),
-        'country': _country.text.trim(),
-        'city': _city.text.trim(),
-        'location': _city.text.trim(), // Keep for backward compatibility
-        if (_avatarUrl != null) 'avatarUrl': _avatarUrl,
-      },
-      parser: (envelope) => envelope.message?.trim().isNotEmpty == true
-          ? envelope.message!
-          : 'Founder profile updated successfully',
-    );
+    final Map<String, dynamic> body = {
+      'fullName': fullName,
+      'name': fullName, // Keep for backward compatibility
+      'bio': _bio.text.trim(),
+      'phone': _phone.text.trim(),
+      'country': _country.text.trim(),
+      'city': _city.text.trim(),
+      'location': _city.text.trim(), // Keep for backward compatibility
+      if (_avatarUrl != null) 'avatarUrl': _avatarUrl,
+    };
+
+    final Result<String> res;
+    if (_localAvatarPath != null) {
+      final uploadRes = await sl<FileUploadHelper>().upload(
+        path: _localAvatarPath!,
+        endpoint: ApiEndpoints.founderProfile,
+        fileField: 'file',
+        method: 'put',
+        fields: body,
+      );
+      res = uploadRes.fold((f) => Err(f), (json) {
+        final url =
+            json['avatarUrl']?.toString() ??
+            json['url']?.toString() ??
+            _avatarUrl;
+        if (url != null) _avatarUrl = url;
+        return const Success('Founder profile updated successfully');
+      });
+    } else {
+      res = await sl<ApiClientHelper>().putEnvelope<String>(
+        ApiEndpoints.founderProfile,
+        body: body,
+        parser: (envelope) => envelope.message?.trim().isNotEmpty == true
+            ? envelope.message!
+            : 'Founder profile updated successfully',
+      );
+    }
+
     if (!mounted) return;
-    setState(() => _saving = false);
+    setState(() {
+      _saving = false;
+      if (res.isSuccess) {
+        _localAvatarPath = null;
+      }
+    });
 
     if (res.isFailure) {
       context.showSnack(res.failureOrNull!.message, isError: true);
@@ -158,6 +173,7 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.showSnack(message);
+      Navigator.of(context).pop();
     });
   }
 
@@ -170,38 +186,11 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
             padding: const EdgeInsets.all(AppSizes.screenPadding),
             children: [
               Center(
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Theme.of(
-                        context,
-                      ).disabledColor.withOpacity(0.1),
-                      backgroundImage:
-                          _avatarUrl != null && _avatarUrl!.isNotEmpty
-                          ? NetworkImage(_avatarUrl!)
-                          : null,
-                      child: _avatarUrl == null || _avatarUrl!.isEmpty
-                          ? const Icon(
-                              Icons.person,
-                              size: 50,
-                              color: Colors.grey,
-                            )
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: IconButton(
-                        style: IconButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.white,
-                        ),
-                        icon: const Icon(Icons.edit, size: 20),
-                        onPressed: _pickAvatar,
-                      ),
-                    ),
-                  ],
+                child: ProfileAvatarEditor(
+                  localPath: _localAvatarPath,
+                  networkUrl: _avatarUrl,
+                  onPathPicked: (path) =>
+                      setState(() => _localAvatarPath = path),
                 ),
               ),
               AppSizes.vGapXl,

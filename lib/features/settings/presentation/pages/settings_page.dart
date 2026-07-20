@@ -10,6 +10,8 @@ import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_list_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
+import '../../../../core/utils/enums.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../domain/repositories/settings_repository.dart';
 
 const _supportedLanguageCodes = [
@@ -123,7 +125,25 @@ class _SettingsPageState extends State<SettingsPage> {
             AppListTile(
               title: 'Edit Profile',
               leadingIcon: Icons.person_outline_rounded,
-              onTap: () => context.push(Routes.profileCompletion),
+              onTap: () {
+                final role =
+                    context.read<AuthBloc>().state.user?.role ??
+                    UserRole.freelancer;
+                switch (role) {
+                  case UserRole.investor:
+                    context.push(Routes.investorProfile);
+                    break;
+                  case UserRole.founder:
+                    context.push(Routes.founderProfile);
+                    break;
+                  case UserRole.client:
+                    context.push(Routes.clientProfile);
+                    break;
+                  case UserRole.freelancer:
+                    context.push(Routes.profileCompletion);
+                    break;
+                }
+              },
             ),
             AppListTile(
               title: 'Security Center',

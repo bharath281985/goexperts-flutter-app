@@ -527,6 +527,9 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage> {
             if (state.successMessage != null) {
               // Message comes from API envelope (e.g. "Profile updated successfully")
               context.showSnack(state.successMessage!);
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
             }
           },
           builder: (context, state) {

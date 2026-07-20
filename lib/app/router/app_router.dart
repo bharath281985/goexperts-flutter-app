@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/dashboard/role_shell.dart';
@@ -42,6 +43,7 @@ import '../../features/investor_dashboard/presentation/pages/investor_subpages.d
 import '../../features/investor_dashboard/presentation/pages/investor_live_pages.dart';
 import '../../features/founder_dashboard/presentation/pages/founder_subpages.dart';
 import '../../features/founder_dashboard/presentation/pages/founder_live_pages.dart';
+import '../../features/founder_dashboard/presentation/pages/founder_proposal_details_page.dart';
 import '../../features/client_dashboard/presentation/pages/create_project_page.dart';
 import '../../features/meetings/presentation/pages/meeting_details_page.dart';
 import '../../features/messages/domain/entities/conversation.dart';
@@ -395,7 +397,15 @@ GoRouter createRouter(AuthBloc authBloc) {
       ),
       GoRoute(
         path: '${Routes.proposalDetails}/:id',
-        builder: (_, s) => ProposalDetailsPage(id: s.pathParameters['id']!),
+        builder: (context, s) {
+          final id = s.pathParameters['id']!;
+          final isFounder =
+              context.read<AuthBloc>().state.user?.role == UserRole.founder;
+          if (isFounder) {
+            return FounderProposalDetailsPage(id: id);
+          }
+          return ProposalDetailsPage(id: id);
+        },
       ),
       GoRoute(
         path: '${Routes.meetingDetails}/:id',

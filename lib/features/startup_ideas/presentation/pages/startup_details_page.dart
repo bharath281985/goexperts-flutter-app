@@ -29,6 +29,7 @@ class StartupDetailsPage extends StatefulWidget {
 class _StartupDetailsPageState extends State<StartupDetailsPage> {
   late final Future<Result<Startup>> _future;
   bool? _hasInvestedOverride;
+  bool? _isSavedOverride;
   bool _isLoadingAction = false;
 
   @override
@@ -42,10 +43,6 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
     return ListenableBuilder(
       listenable: BookmarkManager.instance,
       builder: (context, _) {
-        final isSaved = BookmarkManager.instance.isBookmarked(
-          BookmarkManager.categoryStartups,
-          widget.id,
-        );
         return FutureBuilder<Result<Startup>>(
           future: _future,
           builder: (context, snapshot) {
@@ -62,6 +59,9 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                 body: const AppErrorState(),
               );
             }
+
+            final isSaved = _isSavedOverride ?? s.isSaved;
+
             return Scaffold(
               appBar: AppBar(
                 title: const Text('Startup Details'),
@@ -77,10 +77,27 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                           : Icons.bookmark_outline_rounded,
                       color: isSaved ? AppColors.primary : null,
                     ),
-                    onPressed: () => BookmarkManager.instance.toggle(
-                      BookmarkManager.categoryStartups,
-                      widget.id,
-                    ),
+                    onPressed: () async {
+                      if (_isLoadingAction) return;
+                      setState(() => _isSavedOverride = !isSaved);
+
+                      final repo = sl<StartupRepository>();
+                      final res = await repo.toggleSave(widget.id);
+
+                      if (mounted) {
+                        res.fold(
+                          (f) {
+                            setState(() => _isSavedOverride = isSaved);
+                            context.showSnack(f.message, isError: true);
+                          },
+                          (success) {
+                            context.showSnack(
+                              !isSaved ? 'Saved startup' : 'Removed from saved',
+                            );
+                          },
+                        );
+                      }
+                    },
                   ),
                 ],
               ),
@@ -189,9 +206,16 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                                 });
                               }
                             } else {
-                              context.push(
+                              await context.push(
                                 '${Routes.apply}?type=Investment&name=${Uri.encodeComponent(s.name)}&projectId=${s.id}',
                               );
+                              if (mounted) {
+                                setState(() {
+                                  _future = sl<StartupRepository>().getStartup(
+                                    widget.id,
+                                  );
+                                });
+                              }
                             }
                           },
                         ),
@@ -328,7 +352,8 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                 ),
                 AppSizes.vGapLg,
                 AppCard(
-                  onTap: () => context.push('${Routes.publicFounder}/${s.founderId}'),
+                  onTap: () =>
+                      context.push('${Routes.publicFounder}/${s.founderId}'),
                   child: Row(
                     children: [
                       AppAvatar(
@@ -343,7 +368,7 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                           children: [
                             Text(s.founderName, style: context.text.titleSmall),
                             Text(
-                              'Founder · View profile',
+                              'Founder · Tap to view profile',
                               style: context.text.labelSmall?.copyWith(
                                 color: AppColors.primary,
                               ),
@@ -390,7 +415,7 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                   if (s.pitchDeckUrl != null && s.pitchDeckUrl!.isNotEmpty)
                     _doc(
                       context,
-                      'Pitch Deck (pitch Disk)',
+                      'Pitch Deck',
                       Icons.slideshow_outlined,
                       s.pitchDeckUrl!,
                     ),
@@ -398,7 +423,7 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                       s.businessPlanUrl!.isNotEmpty)
                     _doc(
                       context,
-                      'Business Plan (Businessplan)',
+                      'Business Plan',
                       Icons.description_outlined,
                       s.businessPlanUrl!,
                     ),

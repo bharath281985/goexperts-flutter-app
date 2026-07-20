@@ -8,8 +8,6 @@ import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/utils/enums.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../app/router/route_names.dart';
-import '../../../../core/payments/payment_checkout_service.dart';
-import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/utils/result.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_scaffold.dart';
