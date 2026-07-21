@@ -1,17 +1,25 @@
+import 'dart:io';
+
+import 'package:country_code_picker/country_code_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
+import '../../../../app/constants/app_colors.dart';
 import '../../../../app/constants/app_sizes.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/network/api_client_helper.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/network/file_upload_helper.dart';
+import '../../../../core/utils/phone_validation.dart';
+import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_primary_button.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_location_field.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/widgets/country_code_field.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 
 class FounderPitchDeckLivePage extends StatefulWidget {
@@ -30,14 +38,19 @@ class FounderProfileLivePage extends StatefulWidget {
 }
 
 class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
+  final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _fullName = TextEditingController();
   final _bio = TextEditingController();
-  final _phone = TextEditingController();
+  final _mobile = TextEditingController();
   final _country = TextEditingController();
   final _city = TextEditingController();
 
   String? _avatarUrl;
+  Uint8List? _avatarBytes;
+  String _countryCode = '+91';
+  String _countryIsoCode = 'IN';
+  String _countryName = 'India';
   bool _loading = true;
   bool _saving = false;
 
@@ -52,7 +65,7 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
     _email.dispose();
     _fullName.dispose();
     _bio.dispose();
-    _phone.dispose();
+    _mobile.dispose();
     _country.dispose();
     _city.dispose();
     super.dispose();
@@ -67,33 +80,85 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
     res.fold((f) => context.showSnack(f.message, isError: true), (m) {
       final user = m['user'];
       if (user is Map) {
-        _email.text = user['email']?.toString() ?? '';
-        _fullName.text = user['fullName']?.toString() ?? '';
-        _bio.text = user['bio']?.toString() ?? '';
-        _phone.text = user['phone']?.toString() ?? '';
-        _country.text = user['country']?.toString() ?? '';
-        _city.text = user['city']?.toString() ?? '';
-        _avatarUrl = user['avatarUrl']?.toString();
+        _applyProfile(Map<String, dynamic>.from(user));
       } else {
-        _email.text = m['email']?.toString() ?? '';
-        _fullName.text =
-            m['fullName']?.toString() ?? m['name']?.toString() ?? '';
-        _bio.text = m['bio']?.toString() ?? '';
-        _phone.text = m['phone']?.toString() ?? '';
-        _country.text = m['country']?.toString() ?? '';
-        _city.text = m['city']?.toString() ?? m['location']?.toString() ?? '';
-        _avatarUrl = m['avatarUrl']?.toString();
+        _applyProfile(m);
       }
     });
     setState(() => _loading = false);
   }
 
+  void _applyProfile(Map<String, dynamic> profile) {
+    _email.text = profile['email']?.toString() ?? '';
+    _fullName.text =
+        profile['fullName']?.toString() ?? profile['name']?.toString() ?? '';
+    _bio.text = profile['bio']?.toString() ?? '';
+    _mobile.text =
+        profile['mobileNo']?.toString() ??
+        profile['mobile']?.toString() ??
+        profile['phone']?.toString() ??
+        profile['phoneNumber']?.toString() ??
+        '';
+    _countryCode =
+        profile['countryCode']?.toString() ??
+        profile['dialCode']?.toString() ??
+        profile['callingCode']?.toString() ??
+        '+91';
+    _countryIsoCode = _countryIsoFromDialCode(_countryCode);
+    _countryName = _countryNameFromIso(_countryIsoCode);
+    _mobile.text = PhoneValidation.trimToRequiredLength(
+      _mobile.text,
+      _countryIsoCode,
+    );
+    _country.text = profile['country']?.toString() ?? '';
+    _city.text =
+        profile['address']?.toString() ??
+        profile['city']?.toString() ??
+        profile['location']?.toString() ??
+        '';
+    _avatarUrl =
+        profile['avatarUrl']?.toString() ??
+        profile['profileImageUrl']?.toString() ??
+        profile['profileImage']?.toString() ??
+        profile['imageUrl']?.toString() ??
+        profile['avatar']?.toString();
+  }
+
+  void _setCountryCode(CountryCode countryCode) {
+    setState(() {
+      _countryCode = countryCode.dialCode ?? '+91';
+      _countryIsoCode = countryCode.code ?? 'IN';
+      _countryName = countryCode.name ?? 'India';
+      _mobile.text = PhoneValidation.trimToRequiredLength(
+        _mobile.text,
+        _countryIsoCode,
+      );
+    });
+    _formKey.currentState?.validate();
+  }
+
+  String? _validateMobile(String? value) {
+    final message = PhoneValidation.validateMobile(
+      value: value,
+      countryIsoCode: _countryIsoCode,
+      countryName: _countryName,
+    );
+    return message == null ? null : context.tr(message);
+  }
+
+  String? _requiredValidator(String? value, String message) =>
+      value == null || value.trim().isEmpty ? context.tr(message) : null;
+
   Future<void> _pickAvatar() async {
     final picked = await FilePicker.platform.pickFiles(type: FileType.image);
     final path = picked?.files.single.path;
     if (path == null) return;
+    final bytes = picked?.files.single.bytes ?? await File(path).readAsBytes();
 
-    setState(() => _saving = true);
+    setState(() {
+      _avatarBytes = bytes;
+      _saving = true;
+    });
     final res = await sl<FileUploadHelper>().uploadUrl(
       path: path,
       endpoint: ApiEndpoints.filesUpload,
@@ -103,18 +168,14 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
     setState(() => _saving = false);
 
     res.fold((f) => context.showSnack(f.message, isError: true), (url) {
-      setState(() => _avatarUrl = url);
-      context.showSnack('Logo uploaded successfully');
+      setState(() => _avatarUrl = url.isEmpty ? _avatarUrl : url);
     });
   }
 
   Future<void> _save() async {
-    final fullName = _fullName.text.trim();
+    if (!_formKey.currentState!.validate()) return;
 
-    if (fullName.isEmpty) {
-      context.showSnack('Name is required', isError: true);
-      return;
-    }
+    final fullName = _fullName.text.trim();
 
     setState(() => _saving = true);
     final res = await sl<ApiClientHelper>().putEnvelope<String>(
@@ -123,9 +184,12 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
         'fullName': fullName,
         'name': fullName, // Keep for backward compatibility
         'bio': _bio.text.trim(),
-        'phone': _phone.text.trim(),
+        'countryCode': _countryCode,
+        'mobileNo': _mobile.text.trim(),
+        'phone': _mobile.text.trim(), // Keep for backward compatibility
         'country': _country.text.trim(),
         'city': _city.text.trim(),
+        'address': _city.text.trim(),
         'location': _city.text.trim(), // Keep for backward compatibility
         if (_avatarUrl != null) 'avatarUrl': _avatarUrl,
       },
@@ -163,95 +227,178 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
 
   @override
   Widget build(BuildContext context) => AppScaffold(
-    appBar: AppBar(title: const Text('Founder Profile')),
+    appBar: AppBar(title: Text(context.tr('Founder Profile'))),
     body: _loading
         ? const Center(child: CircularProgressIndicator())
-        : ListView(
-            padding: const EdgeInsets.all(AppSizes.screenPadding),
-            children: [
-              Center(
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Theme.of(
-                        context,
-                      ).disabledColor.withOpacity(0.1),
-                      backgroundImage:
-                          _avatarUrl != null && _avatarUrl!.isNotEmpty
-                          ? NetworkImage(_avatarUrl!)
-                          : null,
-                      child: _avatarUrl == null || _avatarUrl!.isEmpty
-                          ? const Icon(
-                              Icons.person,
-                              size: 50,
-                              color: Colors.grey,
-                            )
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: IconButton(
-                        style: IconButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.white,
+        : Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(AppSizes.screenPadding),
+              children: [
+                Center(
+                  child: Stack(
+                    children: [
+                      AppAvatar(
+                        name: _fullName.text.trim().isEmpty
+                            ? context.tr('Founder')
+                            : _fullName.text.trim(),
+                        imageUrl: _avatarUrl,
+                        imageBytes: _avatarBytes,
+                        size: 100,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: IconButton(
+                          style: IconButton.styleFrom(
+                            backgroundColor: Theme.of(context).primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                          tooltip: context.tr('Change profile photo'),
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: _saving ? null : _pickAvatar,
                         ),
-                        icon: const Icon(Icons.edit, size: 20),
-                        onPressed: _pickAvatar,
+                      ),
+                    ],
+                  ),
+                ),
+                AppSizes.vGapXl,
+                AppTextField(
+                  controller: _email,
+                  label: 'Email',
+                  hint: 'Email Address',
+                  readOnly: true,
+                  validator: (v) => _requiredValidator(v, 'Email is required'),
+                ),
+                AppSizes.vGapMd,
+                AppTextField(
+                  controller: _fullName,
+                  label: 'Name',
+                  hint: 'Enter your name',
+                  validator: (v) => v == null || v.trim().isEmpty
+                      ? context.tr('Name is required')
+                      : null,
+                ),
+                AppSizes.vGapMd,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: CountryCodeField(
+                        initialSelection: _countryIsoCode,
+                        onInit: (countryCode) {
+                          _countryCode = countryCode.dialCode ?? _countryCode;
+                          _countryIsoCode = countryCode.code ?? _countryIsoCode;
+                          _countryName = countryCode.name ?? _countryName;
+                        },
+                        onChanged: _setCountryCode,
+                      ),
+                    ),
+                    AppSizes.hGapSm,
+                    Expanded(
+                      flex: 5,
+                      child: AppTextField(
+                        controller: _mobile,
+                        label: 'Mobile',
+                        hint: 'Enter your mobile number',
+                        prefixIcon: Icons.phone_outlined,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(
+                            PhoneValidation.requiredLength(_countryIsoCode),
+                          ),
+                        ],
+                        onChanged: (_) => setState(() {}),
+                        validator: _validateMobile,
                       ),
                     ),
                   ],
                 ),
-              ),
-              AppSizes.vGapXl,
-              AppTextField(
-                controller: _email,
-                label: 'Email',
-                hint: 'Email Address',
-                readOnly: true,
-              ),
-              AppSizes.vGapMd,
-              AppTextField(
-                controller: _fullName,
-                label: 'Name',
-                hint: 'Enter your name',
-              ),
-              AppSizes.vGapMd,
-              AppTextField(
-                controller: _phone,
-                label: 'Phone',
-                hint: 'Enter your phone number',
-              ),
-              AppSizes.vGapMd,
-              AppTextField(
-                controller: _country,
-                label: 'Country',
-                hint: 'Enter your country',
-              ),
-              AppSizes.vGapMd,
-              AppLocationField(
-                controller: _city,
-                label: 'City',
-                hint: 'Search and select your city',
-              ),
-              AppSizes.vGapMd,
-              AppTextField(
-                controller: _bio,
-                label: 'Bio',
-                hint: 'Enter your bio',
-                maxLines: 4,
-              ),
-              AppSizes.vGapXl,
-              AppPrimaryButton(
-                label: 'Save',
-                isLoading: _saving,
-                onPressed: _save,
-              ),
-              AppSizes.vGapXl,
-            ],
+                AppSizes.vGapXs,
+                Padding(
+                  padding: const EdgeInsets.only(left: 140),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      PhoneValidation.counterText(
+                        value: _mobile.text,
+                        countryIsoCode: _countryIsoCode,
+                      ),
+                      style: context.text.bodySmall?.copyWith(
+                        color: AppColors.mutedText,
+                      ),
+                    ),
+                  ),
+                ),
+                AppSizes.vGapMd,
+                AppTextField(
+                  controller: _country,
+                  label: 'Country',
+                  hint: 'Enter your country',
+                  validator: (v) =>
+                      _requiredValidator(v, 'Country is required'),
+                ),
+                AppSizes.vGapMd,
+                AppLocationField(
+                  controller: _city,
+                  label: 'Address',
+                  hint: 'Search and select your address',
+                  validator: (v) =>
+                      _requiredValidator(v, 'Address is required'),
+                ),
+                AppSizes.vGapMd,
+                AppTextField(
+                  controller: _bio,
+                  label: 'Bio',
+                  hint: 'Enter your bio',
+                  maxLines: 4,
+                  validator: (v) => _requiredValidator(v, 'Bio is required'),
+                ),
+                AppSizes.vGapXl,
+                AppPrimaryButton(
+                  label: 'Save',
+                  isLoading: _saving,
+                  onPressed: _save,
+                ),
+                AppSizes.vGapXl,
+              ],
+            ),
           ),
   );
+}
+
+String _countryIsoFromDialCode(String dialCode) {
+  switch (dialCode.trim()) {
+    case '+1':
+      return 'US';
+    case '+44':
+      return 'GB';
+    case '+61':
+      return 'AU';
+    case '+971':
+      return 'AE';
+    case '+91':
+    default:
+      return 'IN';
+  }
+}
+
+String _countryNameFromIso(String isoCode) {
+  switch (isoCode.toUpperCase()) {
+    case 'US':
+      return 'United States';
+    case 'GB':
+      return 'United Kingdom';
+    case 'AU':
+      return 'Australia';
+    case 'AE':
+      return 'United Arab Emirates';
+    case 'IN':
+    default:
+      return 'India';
+  }
 }
 
 class FounderFundingLivePage extends StatefulWidget {

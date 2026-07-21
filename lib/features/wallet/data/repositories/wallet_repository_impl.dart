@@ -141,8 +141,16 @@ class WalletRepositoryImpl implements WalletRepository {
     Map<String, dynamic>? upiDetails,
   }) async {
     if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
+    final role = await _role();
+    final path = role == UserRole.freelancer
+        ? ApiEndpoints.freelancerWalletWithdraw
+        : role == UserRole.client
+        ? ApiEndpoints.clientWalletWithdraw
+        : role == UserRole.founder
+        ? ApiEndpoints.founderWalletWithdraw
+        : ApiEndpoints.walletWithdraw;
     return _api.postEnvelopeAcceptingHttpSuccess<String>(
-      ApiEndpoints.freelancerWalletWithdraw,
+      path,
       body: {
         'amount': amount,
         'method': method,
@@ -193,10 +201,10 @@ class WalletRepositoryImpl implements WalletRepository {
       reference: json['reference'] as String? ?? '',
       status: _capitalize(
         json['status'] as String? ??
-        json['transactionStatus'] as String? ??
-        json['transaction_status'] as String? ??
-        json['paymentStatus'] as String? ??
-        'Completed',
+            json['transactionStatus'] as String? ??
+            json['transaction_status'] as String? ??
+            json['paymentStatus'] as String? ??
+            'Completed',
       ),
       direction: json['direction'] as String? ?? '',
     );

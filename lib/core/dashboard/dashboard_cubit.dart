@@ -203,8 +203,6 @@ class DashboardCubit extends Cubit<DashboardState> {
             startups: startups.valueOrNull?.items ?? const [],
             activeProjectsCount: activeDealsCount,
             monthlyEarnings: calculatedPortfolioValue,
-          next = next.copyWith(
-            startups: startups.valueOrNull?.items ?? const [],
           );
           break;
         case UserRole.founder:
@@ -350,11 +348,11 @@ class DashboardCubit extends Cubit<DashboardState> {
             }).toList();
           }
 
-          final chart =
-              (data['charts']?['pipeline'] as List?)
-                  ?.map((e) => (e as num?)?.toDouble() ?? 0)
-                  .toList() ??
-              const <double>[];
+          // final chart =
+          //     (data['charts']?['pipeline'] as List?)
+          //         ?.map((e) => (e as num?)?.toDouble() ?? 0)
+          //         .toList() ??
+          //     const <double>[];
           next = next.copyWith(
             monthlyEarnings: portfolioValue,
             activeProjectsCount: activeDeals,

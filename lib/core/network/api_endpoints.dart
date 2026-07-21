@@ -41,6 +41,7 @@ class ApiEndpoints {
   static String notificationDelete(String id) => '/notifications/$id';
   static const wallet = '/wallet';
   static const walletTransactions = '/wallet/transactions';
+  static const walletWithdraw = '/wallet/withdraw';
   static const subscriptionPlans = '/subscriptions/plans';
   static const subscriptionCurrent = '/subscriptions/current';
   static const invoices = '/invoices';
@@ -239,6 +240,7 @@ class ApiEndpoints {
   static const clientInvoices = '/client/invoices';
   static const clientWallet = '/client/wallet';
   static const clientWalletTransactions = '/client/wallet/transactions';
+  static const clientWalletWithdraw = '/client/wallet/withdraw';
   static const clientReviews = '/client/reviews';
   static const clientAnalytics = '/client/analytics';
   static const clientTeam = '/client/team';
@@ -323,6 +325,7 @@ class ApiEndpoints {
   static const founderReports = '/founder/reports';
   static const founderAnalytics = '/founder/analytics';
   static const founderWallet = '/founder/wallet';
+  static const founderWalletWithdraw = '/founder/wallet/withdraw';
   static const founderInvoices = '/founder/invoices';
   static const founderSubscriptionsCurrent = '/founder/subscriptions/current';
   static const founderSubscriptionsPlans = '/founder/subscriptions/plans';

@@ -116,7 +116,6 @@ class Startup extends Equatable {
         : null;
 
     final id = json['id']?.toString() ?? '';
-    print("Startup fromApiJson JSON payload: $json");
 
     final name =
         profile?['startupName']?.toString() ??

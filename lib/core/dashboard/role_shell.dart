@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../app/dependency_injection/service_locator.dart';
@@ -49,6 +51,7 @@ class RoleShell extends StatefulWidget {
 class _RoleShellState extends State<RoleShell> {
   late int _index = widget.initialIndex;
   int _walletRefreshToken = 0;
+  int _messagesRefreshToken = 0;
 
   DashboardCubit _cubit() => DashboardCubit(
     role: widget.role,
@@ -62,7 +65,7 @@ class _RoleShellState extends State<RoleShell> {
     apiClient: sl<ApiClientHelper>(),
   )..load();
 
-  List<_Tab> _buildTabs() {
+  List<_Tab> _buildTabs({Future<void> Function()? onMessagesRefreshed}) {
     switch (widget.role) {
       case UserRole.freelancer:
         return [
@@ -89,7 +92,10 @@ class _RoleShellState extends State<RoleShell> {
               icon: Icons.chat_bubble_outline_rounded,
               activeIcon: Icons.chat_bubble_rounded,
             ),
-            ConversationsListView(),
+            ConversationsListView(
+              refreshToken: _messagesRefreshToken,
+              onRefreshed: onMessagesRefreshed,
+            ),
             title: 'Messages',
           ),
           _Tab(
@@ -111,8 +117,8 @@ class _RoleShellState extends State<RoleShell> {
           ),
         ];
       case UserRole.client:
-        return const [
-          _Tab(
+        return [
+          const _Tab(
             AppNavItem(
               label: 'Home',
               icon: Icons.home_outlined,
@@ -120,7 +126,7 @@ class _RoleShellState extends State<RoleShell> {
             ),
             ClientHomePage(),
           ),
-          _Tab(
+          const _Tab(
             AppNavItem(
               label: 'Projects',
               icon: Icons.work_outline_rounded,
@@ -129,7 +135,7 @@ class _RoleShellState extends State<RoleShell> {
             ProjectsListView(),
             title: 'My Projects',
           ),
-          _Tab(
+          const _Tab(
             AppNavItem(
               label: 'Talent',
               icon: Icons.groups_outlined,
@@ -144,10 +150,13 @@ class _RoleShellState extends State<RoleShell> {
               icon: Icons.chat_bubble_outline_rounded,
               activeIcon: Icons.chat_bubble_rounded,
             ),
-            ConversationsListView(),
+            ConversationsListView(
+              refreshToken: _messagesRefreshToken,
+              onRefreshed: onMessagesRefreshed,
+            ),
             title: 'Messages',
           ),
-          _Tab(
+          const _Tab(
             AppNavItem(
               label: 'Profile',
               icon: Icons.person_outline_rounded,
@@ -157,8 +166,8 @@ class _RoleShellState extends State<RoleShell> {
           ),
         ];
       case UserRole.investor:
-        return const [
-          _Tab(
+        return [
+          const _Tab(
             AppNavItem(
               label: 'Home',
               icon: Icons.home_outlined,
@@ -203,7 +212,7 @@ class _RoleShellState extends State<RoleShell> {
           ),
         ];
       case UserRole.founder:
-        return const [
+        return [
           _Tab(
             AppNavItem(
               label: 'Home',
@@ -212,7 +221,7 @@ class _RoleShellState extends State<RoleShell> {
             ),
             FounderHomePage(),
           ),
-          _Tab(
+          const _Tab(
             AppNavItem(
               label: 'Startup',
               icon: Icons.rocket_launch_outlined,
@@ -221,7 +230,7 @@ class _RoleShellState extends State<RoleShell> {
             StartupsListView(isFounderOverride: true),
             title: 'My Startup Ideas',
           ),
-          _Tab(
+          const _Tab(
             AppNavItem(
               label: 'Investors',
               icon: Icons.trending_up_rounded,
@@ -236,10 +245,13 @@ class _RoleShellState extends State<RoleShell> {
               icon: Icons.chat_bubble_outline_rounded,
               activeIcon: Icons.chat_bubble_rounded,
             ),
-            ConversationsListView(),
+            ConversationsListView(
+              refreshToken: _messagesRefreshToken,
+              onRefreshed: onMessagesRefreshed,
+            ),
             title: 'Messages',
           ),
-          _Tab(
+          const _Tab(
             AppNavItem(
               label: 'Profile',
               icon: Icons.person_outline_rounded,
@@ -267,46 +279,83 @@ class _RoleShellState extends State<RoleShell> {
     ];
   }
 
-  void _selectTab(List<_Tab> tabs, int index) {
+  void _selectTab(BuildContext dashboardContext, List<_Tab> tabs, int index) {
     setState(() {
       if (tabs[index].item.label == 'Wallet') {
         _walletRefreshToken++;
+      }
+      if (tabs[index].item.label == 'Chats') {
+        _messagesRefreshToken++;
+        dashboardContext.read<DashboardCubit>().refresh();
       }
       _index = index;
     });
   }
 
+  Future<void> _showExitDialog() async {
+    if (!mounted) return;
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.tr('Exit app?')),
+        content: Text(dialogContext.tr('Do you want to close the app?')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(dialogContext.tr('Cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(dialogContext.tr('Exit')),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (shouldExit == true) exit(0);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final tabs = _buildTabs();
-    final current = tabs[_index];
-    return BlocProvider<DashboardCubit>(
-      create: (_) => _cubit(),
-      child: BlocBuilder<DashboardCubit, DashboardState>(
-        buildWhen: (prev, next) =>
-            prev.unreadMessagesCount != next.unreadMessagesCount ||
-            prev.unreadNotificationsCount != next.unreadNotificationsCount,
-        builder: (context, state) {
-          return Scaffold(
-            drawer: AppDrawer(
-              role: widget.role,
-              unreadNotifications: state.unreadNotificationsCount,
-              unreadMessages: state.unreadMessagesCount,
-            ),
-            appBar: current.title == null
-                ? null
-                : AppBar(title: Text(context.tr(current.title!))),
-            body: IndexedStack(
-              index: _index,
-              children: [for (final t in tabs) t.body],
-            ),
-            bottomNavigationBar: AppBottomNavigation(
-              items: _navItems(tabs, state.unreadMessagesCount),
-              currentIndex: _index,
-              onTap: (i) => _selectTab(tabs, i),
-            ),
-          );
-        },
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _showExitDialog();
+      },
+      child: BlocProvider<DashboardCubit>(
+        create: (_) => _cubit(),
+        child: BlocBuilder<DashboardCubit, DashboardState>(
+          buildWhen: (prev, next) =>
+              prev.unreadMessagesCount != next.unreadMessagesCount ||
+              prev.unreadNotificationsCount != next.unreadNotificationsCount,
+          builder: (context, state) {
+            final tabs = _buildTabs(
+              onMessagesRefreshed: () =>
+                  context.read<DashboardCubit>().refresh(),
+            );
+            final current = tabs[_index];
+            return Scaffold(
+              drawer: AppDrawer(
+                role: widget.role,
+                unreadNotifications: state.unreadNotificationsCount,
+                unreadMessages: state.unreadMessagesCount,
+              ),
+              appBar: current.title == null
+                  ? null
+                  : AppBar(title: Text(context.tr(current.title!))),
+              body: IndexedStack(
+                index: _index,
+                children: [for (final t in tabs) t.body],
+              ),
+              bottomNavigationBar: AppBottomNavigation(
+                items: _navItems(tabs, state.unreadMessagesCount),
+                currentIndex: _index,
+                onTap: (i) => _selectTab(context, tabs, i),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

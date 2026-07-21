@@ -21,14 +21,27 @@ export '../widgets/profile_view.dart' show PublicProfileType;
 
 /// Public profile page for any role. Fetches by type + id, maps to a shared
 /// [ProfileViewData] and renders the reusable [ProfileView].
-class PublicProfilePage extends StatelessWidget {
+class PublicProfilePage extends StatefulWidget {
   const PublicProfilePage({super.key, required this.type, required this.id});
 
   final PublicProfileType type;
   final String id;
 
+  @override
+  State<PublicProfilePage> createState() => _PublicProfilePageState();
+}
+
+class _PublicProfilePageState extends State<PublicProfilePage> {
+  late Future<Map<String, dynamic>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadAll();
+  }
+
   String get _category {
-    switch (type) {
+    switch (widget.type) {
       case PublicProfileType.freelancer:
         return BookmarkManager.categoryFreelancers;
       case PublicProfileType.company:
@@ -41,9 +54,9 @@ class PublicProfilePage extends StatelessWidget {
   }
 
   Future<ProfileViewData?> _load() async {
-    switch (type) {
+    switch (widget.type) {
       case PublicProfileType.freelancer:
-        final r = await sl<FreelancerRepository>().getFreelancer(id);
+        final r = await sl<FreelancerRepository>().getFreelancer(widget.id);
         final f = r.valueOrNull;
         if (f == null) return null;
         return ProfileViewData(
@@ -75,7 +88,7 @@ class PublicProfilePage extends StatelessWidget {
           },
         );
       case PublicProfileType.company:
-        final r = await sl<CompanyRepository>().getCompany(id);
+        final r = await sl<CompanyRepository>().getCompany(widget.id);
         final c = r.valueOrNull;
         if (c == null) return null;
         return ProfileViewData(
@@ -104,7 +117,7 @@ class PublicProfilePage extends StatelessWidget {
           },
         );
       case PublicProfileType.investor:
-        final r = await sl<InvestorRepository>().getInvestor(id);
+        final r = await sl<InvestorRepository>().getInvestor(widget.id);
         final i = r.valueOrNull;
         if (i == null) return null;
         return ProfileViewData(
@@ -133,7 +146,7 @@ class PublicProfilePage extends StatelessWidget {
           },
         );
       case PublicProfileType.founder:
-        final r = await sl<FounderRepository>().getFounder(id);
+        final r = await sl<FounderRepository>().getFounder(widget.id);
         final f = r.valueOrNull;
         if (f == null) return null;
         return ProfileViewData(
@@ -170,7 +183,9 @@ class PublicProfilePage extends StatelessWidget {
     List<Review> reviews = [];
     if (profile != null) {
       final reviewsRes = await sl<ReviewRepository>().getReviews(
-        QueryParams(filters: {'targetId': id, 'targetType': type.name}),
+        QueryParams(
+          filters: {'targetId': widget.id, 'targetType': widget.type.name},
+        ),
       );
       reviews = reviewsRes.fold((_) => [], (page) => page.items);
     }
@@ -185,40 +200,67 @@ class PublicProfilePage extends StatelessWidget {
         FollowManager.instance,
       ]),
       builder: (context, _) {
-        return Scaffold(
-          appBar: AppBar(title: const Text('Profile')),
-          body: FutureBuilder<Map<String, dynamic>>(
-            future: _loadAll(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const AppLoadingShimmer(itemCount: 4, height: 120);
-              }
-              final data = snapshot.data;
-              final profile = data?['profile'] as ProfileViewData?;
-              final reviews = data?['reviews'] as List<Review>? ?? const [];
-              if (profile == null) return const AppErrorState();
-              return ProfileView(
-                data: profile,
-                reviews: reviews,
-                onPrimaryAction: () => context.showSnack(
-                  '${profile.primaryActionLabel} · ${profile.name}',
-                ),
-                onMessage: () {
-                  final nameEncoded = Uri.encodeComponent(profile.name);
-                  final avatarEncoded = Uri.encodeComponent(
-                    profile.avatarUrl ?? '',
-                  );
-                  context.push(
-                    '${Routes.chat}/$id?name=$nameEncoded&avatarUrl=$avatarEncoded',
-                  );
-                },
-                onFollow: () =>
-                    FollowManager.instance.toggleFollow(_category, id),
-                onBookmark: () =>
-                    BookmarkManager.instance.toggle(_category, id),
-              );
-            },
-          ),
+        return FutureBuilder<Map<String, dynamic>>(
+          future: _future,
+          builder: (context, snapshot) {
+            final data = snapshot.data;
+            final profile = data?['profile'] as ProfileViewData?;
+            final reviews = data?['reviews'] as List<Review>? ?? const [];
+            return Scaffold(
+              appBar: AppBar(
+                title: Text(context.tr('Profile')),
+                actions: [
+                  IconButton(
+                    tooltip: context.tr('Share'),
+                    onPressed: profile == null
+                        ? null
+                        : () => context.showSnack('Share link copied'),
+                    icon: const Icon(Icons.share_outlined),
+                  ),
+                  IconButton(
+                    tooltip: context.tr('Scan'),
+                    onPressed: profile == null
+                        ? null
+                        : () => ProfileActions.showQr(context, profile),
+                    icon: const Icon(Icons.qr_code_rounded),
+                  ),
+                  IconButton(
+                    tooltip: context.tr('More'),
+                    onPressed: profile == null
+                        ? null
+                        : () => ProfileActions.showMore(context, profile),
+                    icon: const Icon(Icons.more_vert_rounded),
+                  ),
+                ],
+              ),
+              body: snapshot.connectionState == ConnectionState.waiting
+                  ? const AppLoadingShimmer(itemCount: 4, height: 120)
+                  : profile == null
+                  ? const AppErrorState()
+                  : ProfileView(
+                      data: profile,
+                      reviews: reviews,
+                      onPrimaryAction: () => context.showSnack(
+                        '${profile.primaryActionLabel} · ${profile.name}',
+                      ),
+                      onMessage: () {
+                        final nameEncoded = Uri.encodeComponent(profile.name);
+                        final avatarEncoded = Uri.encodeComponent(
+                          profile.avatarUrl ?? '',
+                        );
+                        context.push(
+                          '${Routes.chat}/${widget.id}?name=$nameEncoded&avatarUrl=$avatarEncoded',
+                        );
+                      },
+                      onFollow: () => FollowManager.instance.toggleFollow(
+                        _category,
+                        widget.id,
+                      ),
+                      onBookmark: () =>
+                          BookmarkManager.instance.toggle(_category, widget.id),
+                    ),
+            );
+          },
         );
       },
     );

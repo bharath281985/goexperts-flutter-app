@@ -393,7 +393,11 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
           children: [
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Image.file(File(path)),
+              child: Image.file(
+                File(path),
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.broken_image_outlined),
+              ),
             ),
             IconButton(
               icon: const CircleAvatar(
@@ -430,6 +434,8 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
                 width: 40,
                 height: 40,
                 fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.broken_image_outlined),
               ),
             ),
             const SizedBox(width: 10),
@@ -438,15 +444,15 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    label,
+                    context.tr(label),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
                   ),
-                  const Text(
-                    'Image Picked',
-                    style: TextStyle(color: Colors.green, fontSize: 11),
+                  Text(
+                    context.tr('Image Picked'),
+                    style: const TextStyle(color: Colors.green, fontSize: 11),
                   ),
                 ],
               ),
@@ -454,12 +460,12 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
             IconButton(
               icon: const Icon(Icons.visibility_outlined, size: 20),
               onPressed: () => _viewLocalImage(localPath),
-              tooltip: 'View',
+              tooltip: context.tr('View'),
             ),
             IconButton(
               icon: const Icon(Icons.edit_outlined, size: 20),
               onPressed: onPick,
-              tooltip: 'Change',
+              tooltip: context.tr('Change'),
             ),
             IconButton(
               icon: const Icon(
@@ -468,7 +474,7 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
                 size: 20,
               ),
               onPressed: onRemove,
-              tooltip: 'Remove',
+              tooltip: context.tr('Remove'),
             ),
           ],
         ),
@@ -483,7 +489,7 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
       ),
       onPressed: onPick,
       icon: const Icon(Icons.image_outlined, size: 18),
-      label: Text('Pick $label'),
+      label: Text('${context.tr('Pick')} ${context.tr(label)}'),
     );
   }
 
@@ -514,7 +520,7 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    label,
+                    context.tr(label),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -532,7 +538,7 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
             IconButton(
               icon: const Icon(Icons.edit_outlined, size: 20),
               onPressed: onPick,
-              tooltip: 'Change',
+              tooltip: context.tr('Change'),
             ),
             IconButton(
               icon: const Icon(
@@ -541,7 +547,7 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
                 size: 20,
               ),
               onPressed: onRemove,
-              tooltip: 'Remove',
+              tooltip: context.tr('Remove'),
             ),
           ],
         ),
@@ -556,7 +562,7 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
       ),
       onPressed: onPick,
       icon: const Icon(Icons.upload_file_outlined, size: 18),
-      label: Text('Upload $label'),
+      label: Text('${context.tr('Upload')} ${context.tr(label)}'),
     );
   }
 
@@ -571,7 +577,10 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
         left: 20,
         right: 20,
         top: 10,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom:
+            MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.viewPaddingOf(context).bottom +
+            24,
       ),
       child: Stack(
         children: [
@@ -593,9 +602,12 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
                       ),
                     ),
                   ),
-                  const Text(
-                    'Create Startup Idea',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  Text(
+                    context.tr('Create Startup Idea'),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
@@ -653,33 +665,36 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _stage,
-                    decoration: const InputDecoration(
-                      labelText: 'Stage',
-                      border: OutlineInputBorder(),
+                    initialValue: _stage,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Stage'),
+                      border: const OutlineInputBorder(),
                     ),
-                    items: const [
+                    items: [
                       DropdownMenuItem(
                         value: 'Idea Stage',
-                        child: Text('Idea Stage'),
+                        child: Text(context.tr('Idea Stage')),
                       ),
                       DropdownMenuItem(
                         value: 'Prototype',
-                        child: Text('Prototype'),
+                        child: Text(context.tr('Prototype')),
                       ),
-                      DropdownMenuItem(value: 'MVP', child: Text('MVP')),
+                      const DropdownMenuItem(value: 'MVP', child: Text('MVP')),
                       DropdownMenuItem(
                         value: 'Early Revenue',
-                        child: Text('Early Revenue'),
+                        child: Text(context.tr('Early Revenue')),
                       ),
                       DropdownMenuItem(
                         value: 'Early Traction',
-                        child: Text('Early Traction'),
+                        child: Text(context.tr('Early Traction')),
                       ),
-                      DropdownMenuItem(value: 'Growth', child: Text('Growth')),
+                      DropdownMenuItem(
+                        value: 'Growth',
+                        child: Text(context.tr('Growth')),
+                      ),
                       DropdownMenuItem(
                         value: 'Expansion',
-                        child: Text('Expansion'),
+                        child: Text(context.tr('Expansion')),
                       ),
                     ],
                     onChanged: (val) => setState(() => _stage = val),
@@ -708,8 +723,9 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
                           keyboardType: TextInputType.number,
                           validator: (v) {
                             final eq = double.tryParse(v ?? '');
-                            if (eq == null || eq < 0 || eq > 100)
+                            if (eq == null || eq < 0 || eq > 100) {
                               return 'Invalid';
+                            }
                             return null;
                           },
                         ),
@@ -726,7 +742,7 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                         ),
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                        child: Text(context.tr('Cancel')),
                       ),
                       const SizedBox(width: 12),
                       ElevatedButton(
@@ -789,8 +805,8 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
                                   );
                                 }
 
-                                if (!mounted) return;
-                                Navigator.pop(context, {
+                                if (!context.mounted) return;
+                                context.pop({
                                   'logo': logoUrl ?? '',
                                   'coverimage': coverUrl ?? '',
                                   'pitchDisk': pitchDiskUrl ?? '',
@@ -813,7 +829,7 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
                                       0.0,
                                 });
                               },
-                        child: const Text('Create'),
+                        child: Text(context.tr('Create')),
                       ),
                     ],
                   ),
@@ -871,7 +887,10 @@ class _EditIdeaBottomSheetState extends State<_EditIdeaBottomSheet> {
         left: 20,
         right: 20,
         top: 10,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom:
+            MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.viewPaddingOf(context).bottom +
+            24,
       ),
       child: Form(
         key: _formKey,
@@ -891,9 +910,12 @@ class _EditIdeaBottomSheetState extends State<_EditIdeaBottomSheet> {
                   ),
                 ),
               ),
-              const Text(
-                'Edit Startup Idea',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                context.tr('Edit Startup Idea'),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -908,33 +930,36 @@ class _EditIdeaBottomSheetState extends State<_EditIdeaBottomSheet> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _stage,
-                decoration: const InputDecoration(
-                  labelText: 'Stage',
-                  border: OutlineInputBorder(),
+                initialValue: _stage,
+                decoration: InputDecoration(
+                  labelText: context.tr('Stage'),
+                  border: const OutlineInputBorder(),
                 ),
-                items: const [
+                items: [
                   DropdownMenuItem(
                     value: 'Idea Stage',
-                    child: Text('Idea Stage'),
+                    child: Text(context.tr('Idea Stage')),
                   ),
                   DropdownMenuItem(
                     value: 'Prototype',
-                    child: Text('Prototype'),
+                    child: Text(context.tr('Prototype')),
                   ),
-                  DropdownMenuItem(value: 'MVP', child: Text('MVP')),
+                  const DropdownMenuItem(value: 'MVP', child: Text('MVP')),
                   DropdownMenuItem(
                     value: 'Early Revenue',
-                    child: Text('Early Revenue'),
+                    child: Text(context.tr('Early Revenue')),
                   ),
                   DropdownMenuItem(
                     value: 'Early Traction',
-                    child: Text('Early Traction'),
+                    child: Text(context.tr('Early Traction')),
                   ),
-                  DropdownMenuItem(value: 'Growth', child: Text('Growth')),
+                  DropdownMenuItem(
+                    value: 'Growth',
+                    child: Text(context.tr('Growth')),
+                  ),
                   DropdownMenuItem(
                     value: 'Expansion',
-                    child: Text('Expansion'),
+                    child: Text(context.tr('Expansion')),
                   ),
                 ],
                 onChanged: (val) => setState(() => _stage = val),
@@ -950,7 +975,7 @@ class _EditIdeaBottomSheetState extends State<_EditIdeaBottomSheet> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                     ),
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: Text(context.tr('Cancel')),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
@@ -969,7 +994,7 @@ class _EditIdeaBottomSheetState extends State<_EditIdeaBottomSheet> {
                         'stage': _stage,
                       });
                     },
-                    child: const Text('Update'),
+                    child: Text(context.tr('Update')),
                   ),
                 ],
               ),

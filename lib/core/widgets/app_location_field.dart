@@ -42,7 +42,7 @@ class AppLocationField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label != null) ...[
-          Text(label!, style: context.text.titleSmall),
+          Text(context.tr(label!), style: context.text.titleSmall),
           AppSizes.vGapSm,
         ],
         TextFormField(
@@ -51,13 +51,13 @@ class AppLocationField extends StatelessWidget {
           onTap: () => _openSearch(context),
           validator: validator,
           decoration: InputDecoration(
-            hintText: hint ?? 'Search and select location',
+            hintText: context.tr(hint ?? 'Search and select location'),
             prefixIcon: const Icon(
               Icons.location_on_outlined,
               size: AppSizes.iconMd,
             ),
             suffixIcon: IconButton(
-              tooltip: 'Search location',
+              tooltip: context.tr('Search location'),
               onPressed: () => _openSearch(context),
               icon: const Icon(Icons.search),
             ),

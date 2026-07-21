@@ -53,7 +53,7 @@ class AppStartupCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _TitleBlock(startup: startup),
-                 
+
                   _CategoryChips(startup: startup),
                   AppSizes.vGapXl,
                   _FundingProgress(startup: startup),
@@ -318,7 +318,7 @@ class _FundingProgress extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const TextSpan(text: ' raised of '),
+              TextSpan(text: ' ${context.tr('raised of')} '),
               TextSpan(
                 text: Formatters.compactCurrency(startup.fundingRequired),
                 style: const TextStyle(
@@ -428,7 +428,7 @@ class _StatItem extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          label,
+          context.tr(label),
           style: context.text.titleMedium?.copyWith(
             color: AppColors.projectBodyText,
             fontWeight: FontWeight.w400,
@@ -471,7 +471,7 @@ class _Actions extends StatelessWidget {
                   size: AppSizes.iconLg,
                 ),
                 label: Text(
-                  'Delete',
+                  context.tr('Delete'),
                   style: TextStyle(
                     color: AppColors.danger,
                     fontWeight: FontWeight.w700,
@@ -515,7 +515,7 @@ class _Actions extends StatelessWidget {
               size: AppSizes.iconLg,
             ),
             label: Text(
-              isSaved ? 'Saved' : 'Save',
+              context.tr(isSaved ? 'Saved' : 'Save'),
               style: context.text.titleMedium?.copyWith(
                 color: AppColors.projectText,
                 fontWeight: FontWeight.w700,
