@@ -241,7 +241,7 @@ class Startup extends Equatable {
       fundingRaised:
           (json['fundingRaised'] as num?)?.toDouble() ??
           (profile?['fundingRaised'] as num?)?.toDouble() ??
-          (profile?['raised'] as num?)?.toDouble() ??
+         
           0.0,
       pitchDeckUrl:
           json['pitchDeck'] as String? ??

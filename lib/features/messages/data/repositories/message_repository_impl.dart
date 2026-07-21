@@ -117,7 +117,9 @@ class MessageRepositoryImpl implements MessageRepository {
         parser: (envelope) =>
             ApiResponse.parseList(envelope.data, _conversationFromJson),
       ),
-      if (role == UserRole.freelancer)
+      if (role == UserRole.freelancer ||
+          role == UserRole.investor ||
+          role == UserRole.founder)
         () => _api.getEnvelope<List<Conversation>>(
           ApiEndpoints.chatConversations,
           query: params.toApiQuery(),
@@ -457,7 +459,13 @@ class MessageRepositoryImpl implements MessageRepository {
           DateTime.tryParse(lastTimeRaw) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       avatarUrl: json['avatar'] as String? ?? json['avatarUrl'] as String?,
-      unreadCount: (json['unread'] as num?)?.toInt() ?? 0,
+      unreadCount:
+          int.tryParse(
+            (json['unread'] ?? json['unreadCount'] ?? json['unread_count'])
+                    ?.toString() ??
+                '',
+          ) ??
+          0,
       isOnline: json['online'] as bool? ?? false,
       isPinned: false,
       isMuted: false,

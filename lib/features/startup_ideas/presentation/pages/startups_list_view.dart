@@ -15,6 +15,7 @@ import '../../../../core/widgets/catalog_view.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/network/file_upload_helper.dart';
+import '../../../../core/utils/bookmark_manager.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../domain/entities/startup.dart';
 import '../../domain/repositories/startup_repository.dart';
@@ -200,7 +201,7 @@ class StartupsListView extends StatelessWidget {
         return AppStartupCard(
           startup: s,
           onTap: isFounder
-              ? () => context.push(Routes.founderStartup)
+              ? () => context.push('${Routes.founderStartup}?id=${s.id}')
               : () => context.push('${Routes.startupDetails}/${s.id}'),
           onSave: isFounder
               ? null
@@ -210,6 +211,10 @@ class StartupsListView extends StatelessWidget {
                     (f) => context.showTopSnack(f.message, isError: true),
                     (success) {
                       if (success) {
+                        BookmarkManager.instance.toggle(
+                          BookmarkManager.categoryStartups,
+                          s.id,
+                        );
                         final updated = s.copyWith(isSaved: !s.isSaved);
                         bloc.add(
                           ListItemUpdated(
@@ -273,9 +278,22 @@ class StartupsListView extends StatelessWidget {
                       },
                     );
                   } else {
-                    context.push(
+                    await context.push(
                       '${Routes.apply}?type=Investment&name=${Uri.encodeComponent(s.name)}&projectId=${s.id}',
                     );
+                    if (context.mounted) {
+                      final res = await repo.getStartup(s.id);
+                      res.fold((_) {}, (val) {
+                        if (context.mounted) {
+                          bloc.add(
+                            ListItemUpdated(
+                              val,
+                              (existing, newItem) => existing.id == newItem.id,
+                            ),
+                          );
+                        }
+                      });
+                    }
                   }
                 },
           onEdit: isFounder ? () => _editIdea(context, s, bloc) : null,

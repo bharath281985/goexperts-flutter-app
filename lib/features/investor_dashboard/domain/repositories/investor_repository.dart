@@ -7,6 +7,10 @@ abstract class InvestorRepository {
   Future<Result<Investor>> getInvestor(String id);
   Future<Result<Paginated<Deal>>> getDeals(QueryParams params);
   Future<Result<Paginated<PortfolioItem>>> getPortfolio(QueryParams params);
+  Future<Result<PortfolioPerformance>> getPortfolioPerformance();
+  Future<Result<Paginated<InvestmentHistoryItem>>> getInvestmentHistory(
+    QueryParams params,
+  );
   Future<Result<bool>> toggleFollow(String id);
   Future<Result<bool>> toggleSave(String id);
 }

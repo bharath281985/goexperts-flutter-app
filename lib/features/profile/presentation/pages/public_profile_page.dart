@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../app/constants/app_colors.dart';
 import '../../../../app/constants/app_sizes.dart';
@@ -14,9 +15,11 @@ import '../../../../core/utils/bookmark_manager.dart';
 import '../../../../core/utils/follow_manager.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/paginated.dart';
+import '../../../../core/utils/enums.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/app_error_state.dart';
 import '../../../../core/widgets/app_loading_shimmer.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../domain/entities/review.dart';
 import '../../domain/repositories/review_repository.dart';
 import '../../../investor_dashboard/domain/repositories/investor_repository.dart';
@@ -512,46 +515,256 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     widget.id,
                   ),
                   onBookmark: () async {
+                    final currRole = context.read<AuthBloc>().state.user?.role;
                     if (widget.type == PublicProfileType.investor) {
-                      final repo = sl<InvestorRepository>();
-                      final res = await repo.toggleSave(widget.id);
-                      res.fold(
-                        (f) {
-                          context.showSnack(f.message, isError: true);
-                        },
-                        (success) {
-                          BookmarkManager.instance.toggle(
-                            _bookmarkCategory,
-                            widget.id,
+                      if (currRole == UserRole.founder) {
+                        final api = sl<ApiClientHelper>();
+                        final isSaved = BookmarkManager.instance.isBookmarked(
+                          _bookmarkCategory,
+                          widget.id,
+                        );
+
+                        if (!isSaved) {
+                          final res = await api.postAction(
+                            '${ApiEndpoints.favorites}/toggle',
+                            body: {
+                              'entityType': 'investor',
+                              'entityId': widget.id,
+                            },
                           );
-                        },
-                      );
-                    } else if (widget.type == PublicProfileType.founder) {
-                      final api = sl<ApiClientHelper>();
-                      final post = await api.postAction(
-                        ApiEndpoints.investorFounderSave(widget.id),
-                      );
-                      final res = post.isSuccess
-                          ? post
-                          : await api.deleteAction(
-                              ApiEndpoints.investorFounderSave(widget.id),
+                          res.fold(
+                            (f) => context.showSnack(f.message, isError: true),
+                            (success) {
+                              BookmarkManager.instance.toggle(
+                                _bookmarkCategory,
+                                widget.id,
+                              );
+                              setState(() {
+                                _future = _loadAll();
+                              });
+                            },
+                          );
+                        } else {
+                          final favListRes = await api.get<dynamic>(
+                            ApiEndpoints.favorites,
+                            query: {'page': 1, 'limit': 100},
+                            parser: (data) => data,
+                          );
+                          await favListRes.fold(
+                            (f) async =>
+                                context.showSnack(f.message, isError: true),
+                            (data) async {
+                              String? uuid;
+                              try {
+                                if (data is Map) {
+                                  final items = data['items'];
+                                  if (items is List) {
+                                    for (final item in items) {
+                                      if (item is Map &&
+                                          item['entityId']?.toString() ==
+                                              widget.id) {
+                                        uuid = item['id']?.toString();
+                                        break;
+                                      }
+                                    }
+                                  }
+                                }
+                              } catch (e) {
+                                debugPrint('Error parsing favorites: $e');
+                              }
+
+                              if (uuid != null) {
+                                final delRes = await api.deleteAction(
+                                  '${ApiEndpoints.favorites}/$uuid',
+                                );
+                                delRes.fold(
+                                  (f) => context.showSnack(
+                                    f.message,
+                                    isError: true,
+                                  ),
+                                  (success) {
+                                    BookmarkManager.instance.toggle(
+                                      _bookmarkCategory,
+                                      widget.id,
+                                    );
+                                    setState(() {
+                                      _future = _loadAll();
+                                    });
+                                  },
+                                );
+                              } else {
+                                final delRes = await api.deleteAction(
+                                  '${ApiEndpoints.favorites}/${widget.id}',
+                                );
+                                delRes.fold(
+                                  (f) => context.showSnack(
+                                    f.message,
+                                    isError: true,
+                                  ),
+                                  (success) {
+                                    BookmarkManager.instance.toggle(
+                                      _bookmarkCategory,
+                                      widget.id,
+                                    );
+                                    setState(() {
+                                      _future = _loadAll();
+                                    });
+                                  },
+                                );
+                              }
+                            },
+                          );
+                        }
+                      } else {
+                        final repo = sl<InvestorRepository>();
+                        final res = await repo.toggleSave(widget.id);
+                        res.fold(
+                          (f) {
+                            context.showSnack(f.message, isError: true);
+                          },
+                          (success) {
+                            BookmarkManager.instance.toggle(
+                              _bookmarkCategory,
+                              widget.id,
                             );
-                      res.fold(
-                        (f) {
-                          context.showSnack(f.message, isError: true);
-                        },
-                        (success) {
-                          BookmarkManager.instance.toggle(
-                            _bookmarkCategory,
-                            widget.id,
+                            setState(() {
+                              _future = _loadAll();
+                            });
+                          },
+                        );
+                      }
+                    } else if (widget.type == PublicProfileType.founder) {
+                      if (currRole == UserRole.investor) {
+                        final api = sl<ApiClientHelper>();
+                        final isSaved = BookmarkManager.instance.isBookmarked(
+                          _bookmarkCategory,
+                          widget.id,
+                        );
+
+                        if (!isSaved) {
+                          final res = await api.postAction(
+                            '${ApiEndpoints.favorites}/toggle',
+                            body: {
+                              'entityType': 'founder',
+                              'entityId': widget.id,
+                            },
                           );
-                        },
-                      );
+                          res.fold(
+                            (f) => context.showSnack(f.message, isError: true),
+                            (success) {
+                              BookmarkManager.instance.toggle(
+                                _bookmarkCategory,
+                                widget.id,
+                              );
+                              setState(() {
+                                _future = _loadAll();
+                              });
+                            },
+                          );
+                        } else {
+                          final favListRes = await api.get<dynamic>(
+                            ApiEndpoints.favorites,
+                            query: {'page': 1, 'limit': 100},
+                            parser: (data) => data,
+                          );
+                          await favListRes.fold(
+                            (f) async =>
+                                context.showSnack(f.message, isError: true),
+                            (data) async {
+                              String? uuid;
+                              try {
+                                if (data is Map) {
+                                  final items = data['items'];
+                                  if (items is List) {
+                                    for (final item in items) {
+                                      if (item is Map &&
+                                          item['entityId']?.toString() ==
+                                              widget.id) {
+                                        uuid = item['id']?.toString();
+                                        break;
+                                      }
+                                    }
+                                  }
+                                }
+                              } catch (e) {
+                                debugPrint('Error parsing favorites: $e');
+                              }
+
+                              if (uuid != null) {
+                                final delRes = await api.deleteAction(
+                                  '${ApiEndpoints.favorites}/$uuid',
+                                );
+                                delRes.fold(
+                                  (f) => context.showSnack(
+                                    f.message,
+                                    isError: true,
+                                  ),
+                                  (success) {
+                                    BookmarkManager.instance.toggle(
+                                      _bookmarkCategory,
+                                      widget.id,
+                                    );
+                                    setState(() {
+                                      _future = _loadAll();
+                                    });
+                                  },
+                                );
+                              } else {
+                                final delRes = await api.deleteAction(
+                                  '${ApiEndpoints.favorites}/${widget.id}',
+                                );
+                                delRes.fold(
+                                  (f) => context.showSnack(
+                                    f.message,
+                                    isError: true,
+                                  ),
+                                  (success) {
+                                    BookmarkManager.instance.toggle(
+                                      _bookmarkCategory,
+                                      widget.id,
+                                    );
+                                    setState(() {
+                                      _future = _loadAll();
+                                    });
+                                  },
+                                );
+                              }
+                            },
+                          );
+                        }
+                      } else {
+                        final api = sl<ApiClientHelper>();
+                        final post = await api.postAction(
+                          ApiEndpoints.investorFounderSave(widget.id),
+                        );
+                        final res = post.isSuccess
+                            ? post
+                            : await api.deleteAction(
+                                ApiEndpoints.investorFounderSave(widget.id),
+                              );
+                        res.fold(
+                          (f) {
+                            context.showSnack(f.message, isError: true);
+                          },
+                          (success) {
+                            BookmarkManager.instance.toggle(
+                              _bookmarkCategory,
+                              widget.id,
+                            );
+                            setState(() {
+                              _future = _loadAll();
+                            });
+                          },
+                        );
+                      }
                     } else {
-                      BookmarkManager.instance.toggle(
+                      await BookmarkManager.instance.toggle(
                         _bookmarkCategory,
                         widget.id,
                       );
+                      setState(() {
+                        _future = _loadAll();
+                      });
                     }
                   },
                 );

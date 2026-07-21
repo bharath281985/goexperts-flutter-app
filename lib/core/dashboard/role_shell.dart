@@ -26,6 +26,7 @@ import '../extensions/context_extensions.dart';
 import '../utils/enums.dart';
 import '../widgets/app_bottom_navigation.dart';
 import '../widgets/app_drawer.dart';
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import 'dashboard_cubit.dart';
 
 /// A single tab within a role shell.
@@ -62,8 +63,8 @@ class _RoleShellState extends State<RoleShell> {
     apiClient: sl<ApiClientHelper>(),
   )..load();
 
-  List<_Tab> _buildTabs() {
-    switch (widget.role) {
+  List<_Tab> _buildTabs(UserRole activeRole) {
+    switch (activeRole) {
       case UserRole.freelancer:
         return [
           const _Tab(
@@ -278,35 +279,53 @@ class _RoleShellState extends State<RoleShell> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = _buildTabs();
-    final current = tabs[_index];
+    final user = context.watch<AuthBloc>().state.user;
+    final activeRole = user?.role ?? widget.role;
+    final tabs = _buildTabs(activeRole);
+    final current = tabs[_index.clamp(0, tabs.length - 1)];
     return BlocProvider<DashboardCubit>(
       create: (_) => _cubit(),
-      child: BlocBuilder<DashboardCubit, DashboardState>(
-        buildWhen: (prev, next) =>
-            prev.unreadMessagesCount != next.unreadMessagesCount ||
-            prev.unreadNotificationsCount != next.unreadNotificationsCount,
-        builder: (context, state) {
-          return Scaffold(
-            drawer: AppDrawer(
-              role: widget.role,
-              unreadNotifications: state.unreadNotificationsCount,
-              unreadMessages: state.unreadMessagesCount,
-            ),
-            appBar: current.title == null
-                ? null
-                : AppBar(title: Text(context.tr(current.title!))),
-            body: IndexedStack(
-              index: _index,
-              children: [for (final t in tabs) t.body],
-            ),
-            bottomNavigationBar: AppBottomNavigation(
-              items: _navItems(tabs, state.unreadMessagesCount),
-              currentIndex: _index,
-              onTap: (i) => _selectTab(tabs, i),
-            ),
-          );
+      child: BlocListener<AuthBloc, AuthState>(
+        listenWhen: (prev, curr) {
+          final p = prev.user;
+          final c = curr.user;
+          if (p == null || c == null) return false;
+          return p.fullName != c.fullName ||
+              p.avatarUrl != c.avatarUrl ||
+              p.location != c.location ||
+              p.headline != c.headline ||
+              p.subscriptionPlan != c.subscriptionPlan ||
+              p.subscriptionStatus != c.subscriptionStatus;
         },
+        listener: (context, state) {
+          context.read<DashboardCubit>().load();
+        },
+        child: BlocBuilder<DashboardCubit, DashboardState>(
+          buildWhen: (prev, next) =>
+              prev.unreadMessagesCount != next.unreadMessagesCount ||
+              prev.unreadNotificationsCount != next.unreadNotificationsCount,
+          builder: (context, state) {
+            return Scaffold(
+              drawer: AppDrawer(
+                role: activeRole,
+                unreadNotifications: state.unreadNotificationsCount,
+                unreadMessages: state.unreadMessagesCount,
+              ),
+              appBar: current.title == null
+                  ? null
+                  : AppBar(title: Text(context.tr(current.title!))),
+              body: IndexedStack(
+                index: _index,
+                children: [for (final t in tabs) t.body],
+              ),
+              bottomNavigationBar: AppBottomNavigation(
+                items: _navItems(tabs, state.unreadMessagesCount),
+                currentIndex: _index,
+                onTap: (i) => _selectTab(tabs, i),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

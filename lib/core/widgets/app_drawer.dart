@@ -182,28 +182,44 @@ class AppDrawer extends StatelessWidget {
                         trailing: e.badge != null && e.badge! > 0
                             ? Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
+                                  horizontal: 6,
                                   vertical: 2,
                                 ),
-                                decoration: const BoxDecoration(
+                                constraints: const BoxConstraints(minWidth: 18),
+                                decoration: BoxDecoration(
                                   color: AppColors.primary,
-                                  shape: BoxShape.circle,
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Text(
-                                  '${e.badge}',
+                                  e.badge! > 99 ? '99+' : '${e.badge}',
+                                  textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 10,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               )
                             : null,
-                        onTap: () {
+                        onTap: () async {
+                          final route = e.route;
                           Navigator.of(context).pop();
                           if (e.onTap != null) {
                             e.onTap!();
-                          } else if (e.route != null) {
-                            context.push(e.route!);
+                          } else if (route != null) {
+                            await context.push(route);
+                            if (context.mounted) {
+                              if (route == Routes.freelancerProfile ||
+                                  route == Routes.clientProfile ||
+                                  route == Routes.investorProfile ||
+                                  route == Routes.founderProfile ||
+                                  route == Routes.profileCompletion ||
+                                  route == Routes.settings) {
+                                context.read<AuthBloc>().add(
+                                  const AuthProfileRefreshed(),
+                                );
+                              }
+                            }
                           }
                         },
                       ),
@@ -419,11 +435,11 @@ class AppDrawer extends StatelessWidget {
               Icons.trending_up_rounded,
               route: Routes.founderInvestors,
             ),
-            DrawerEntry(
-              'Funding',
-              Icons.savings_outlined,
-              route: Routes.founderFunding,
-            ),
+            // DrawerEntry(
+            //   'Funding',
+            //   Icons.savings_outlined,
+            //   route: Routes.founderFunding,
+            // ),
           ]),
           common,
           account,

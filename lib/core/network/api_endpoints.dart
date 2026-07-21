@@ -191,6 +191,7 @@ class ApiEndpoints {
   static const freelancerSearchProjects = '/freelancer/search/projects';
   static const freelancerSearchClients = '/freelancer/search/clients';
   static const freelancerSearchSkills = '/freelancer/search/skills';
+  static const freelancerAnalytics = '/freelancer/analytics';
 
   // ── Client ────────────────────────────────────────────────────────────────
   static const clientDashboard = '/client/dashboard';
@@ -276,6 +277,7 @@ class ApiEndpoints {
   static const investorOffer = '/investor/investments/offer';
   static String investorInvestmentStatus(String id) =>
       '/investor/investments/$id/status';
+  static const investorInvestmentHistory = '/investor/investments/history';
   static const investorPortfolio = '/investor/portfolio';
   static String investorPortfolioItem(String id) => '/investor/portfolio/$id';
   static const investorPortfolioPerformance = '/investor/portfolio/performance';

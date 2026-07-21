@@ -91,6 +91,10 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                             context.showSnack(f.message, isError: true);
                           },
                           (success) {
+                            BookmarkManager.instance.toggle(
+                              BookmarkManager.categoryStartups,
+                              widget.id,
+                            );
                             context.showSnack(
                               !isSaved ? 'Saved startup' : 'Removed from saved',
                             );
@@ -211,6 +215,7 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                               );
                               if (mounted) {
                                 setState(() {
+                                  _hasInvestedOverride = null;
                                   _future = sl<StartupRepository>().getStartup(
                                     widget.id,
                                   );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../core/extensions/context_extensions.dart';
@@ -40,8 +41,23 @@ class _MeetingsListViewState extends State<MeetingsListView> {
         skeletonHeight: 96,
         itemBuilder: (context, m, _) => AppMeetingCard(
           meeting: m,
-          onJoin: () => context.showSnack('Joining ${m.title}… (WebRTC ready)'),
-          onTap: () => context.push('${Routes.meetingDetails}/${m.id}'),
+          onJoin: () async {
+            final link = m.meetingLink.isNotEmpty
+                ? m.meetingLink
+                : 'https://meet.google.com';
+            final uri = Uri.tryParse(link);
+            if (uri != null) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          },
+          onTap: () async {
+            await context.push('${Routes.meetingDetails}/${m.id}');
+            if (mounted) {
+              setState(() {
+                _refreshKey++;
+              });
+            }
+          },
         ),
       ),
     );

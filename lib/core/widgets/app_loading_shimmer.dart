@@ -5,10 +5,16 @@ import '../extensions/context_extensions.dart';
 
 /// Shimmer skeletons for loading states.
 class AppLoadingShimmer extends StatelessWidget {
-  const AppLoadingShimmer({super.key, this.itemCount = 6, this.height = 92});
+  const AppLoadingShimmer({
+    super.key,
+    this.itemCount = 6,
+    this.height = 92,
+    this.physics = const NeverScrollableScrollPhysics(),
+  });
 
   final int itemCount;
   final double height;
+  final ScrollPhysics physics;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +29,7 @@ class AppLoadingShimmer extends StatelessWidget {
       child: ListView.separated(
         padding: const EdgeInsets.all(AppSizes.screenPadding),
         shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
+        physics: physics,
         itemCount: itemCount,
         separatorBuilder: (_, __) => AppSizes.vGapMd,
         itemBuilder: (_, __) => Container(
