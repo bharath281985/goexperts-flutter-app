@@ -177,8 +177,9 @@ class ListBloc<T> extends Bloc<ListEvent, ListState<T>> {
   }
 
   Future<void> _onLoadMore(ListLoadMore event, Emitter<ListState<T>> emit) {
-    if (!state.hasMore || state.status == ViewStatus.loadingMore)
+    if (!state.hasMore || state.status == ViewStatus.loadingMore) {
       return Future.value();
+    }
     return _load(
       emit,
       query: state.query.copyWith(page: state.query.page + 1),

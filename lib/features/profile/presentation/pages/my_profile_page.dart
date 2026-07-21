@@ -197,7 +197,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
                       await context.push(Routes.clientProfile);
                       break;
                     case UserRole.freelancer:
-                      await context.push(Routes.profileCompletion);
+                      context.push(Routes.freelancerProfile);
                       break;
                   }
                   if (context.mounted) {

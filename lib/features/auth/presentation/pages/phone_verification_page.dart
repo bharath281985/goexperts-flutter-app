@@ -50,10 +50,10 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
   }
 
   String? _validatePhone(String? value) => PhoneValidation.validateMobile(
-        value: value,
-        countryIsoCode: _countryIsoCode,
-        countryName: _countryName,
-      );
+    value: value,
+    countryIsoCode: _countryIsoCode,
+    countryName: _countryName,
+  );
 
   Future<void> _continue() async {
     if (!_formKey.currentState!.validate()) return;
@@ -128,7 +128,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Code', style: context.text.titleSmall),
+                        Text('Country', style: context.text.titleSmall),
                         AppSizes.vGapSm,
                         InputDecorator(
                           decoration: const InputDecoration(
@@ -152,6 +152,7 @@ class _PhoneVerificationPageState extends State<PhoneVerificationPage> {
                             alignLeft: true,
                             padding: EdgeInsets.zero,
                             flagWidth: 24,
+                            showFlag: false,
                             textStyle: context.text.bodyMedium,
                             dialogTextStyle: context.text.bodyMedium,
                             searchDecoration: const InputDecoration(

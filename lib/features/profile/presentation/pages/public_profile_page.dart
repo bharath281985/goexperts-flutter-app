@@ -27,23 +27,8 @@ import '../widgets/profile_view.dart';
 
 export '../widgets/profile_view.dart' show PublicProfileType;
 
-/// Canonical web-style deep-link: `https://goexperts.in/{type}/{id}`
-String _shareLink(PublicProfileType type, String id) {
-  const base = 'https://goexperts.in';
-  switch (type) {
-    case PublicProfileType.freelancer:
-      return '$base/u/freelancer/$id';
-    case PublicProfileType.company:
-      return '$base/u/company/$id';
-    case PublicProfileType.investor:
-      return '$base/u/investor/$id';
-    case PublicProfileType.founder:
-      return '$base/u/founder/$id';
-  }
-}
-
-/// Public profile page for any role.
-/// Fetches data from the public API endpoints (no auth required).
+/// Public profile page for any role. Fetches by type + id, maps to a shared
+/// [ProfileViewData] and renders the reusable [ProfileView].
 class PublicProfilePage extends StatefulWidget {
   const PublicProfilePage({super.key, required this.type, required this.id});
 
@@ -63,7 +48,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     _future = _loadAll();
   }
 
-  String get _bookmarkCategory {
+  String get _category {
     switch (widget.type) {
       case PublicProfileType.freelancer:
         return BookmarkManager.categoryFreelancers;
@@ -76,206 +61,128 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
   }
 
-  String get _followCategory {
+  Future<ProfileViewData?> _load() async {
     switch (widget.type) {
       case PublicProfileType.freelancer:
-        return FollowManager.categoryFreelancers;
+        final r = await sl<FreelancerRepository>().getFreelancer(widget.id);
+        final f = r.valueOrNull;
+        if (f == null) return null;
+        return ProfileViewData(
+          name: f.name,
+          headline: f.headline,
+          location: f.location,
+          avatarUrl: f.avatarUrl,
+          isVerified: f.isVerified,
+          about: f.bio,
+          rating: f.rating,
+          reviewsCount: f.reviewsCount,
+          followers: f.followers,
+          skills: f.skills,
+          isFollowing: FollowManager.instance.isFollowing(
+            FollowManager.categoryFreelancers,
+            f.id,
+          ),
+          isSaved: BookmarkManager.instance.isBookmarked(
+            BookmarkManager.categoryFreelancers,
+            f.id,
+          ),
+          type: PublicProfileType.freelancer,
+          primaryActionLabel: 'Hire Now',
+          primaryActionIcon: Icons.handshake_outlined,
+          stats: {
+            'Projects': '${f.completedProjects}',
+            'Success': '${f.successRate}%',
+            'Rate': '${Formatters.compactCurrency(f.hourlyRate)}/hr',
+          },
+        );
       case PublicProfileType.company:
-        return FollowManager.categoryCompanies;
+        final r = await sl<CompanyRepository>().getCompany(widget.id);
+        final c = r.valueOrNull;
+        if (c == null) return null;
+        return ProfileViewData(
+          name: c.name,
+          headline: '${c.industry} · ${c.teamSize} employees',
+          location: c.location,
+          avatarUrl: c.logoUrl,
+          isVerified: c.isVerified,
+          about: c.description,
+          rating: c.rating,
+          isFollowing: FollowManager.instance.isFollowing(
+            FollowManager.categoryCompanies,
+            c.id,
+          ),
+          isSaved: BookmarkManager.instance.isBookmarked(
+            BookmarkManager.categoryCompanies,
+            c.id,
+          ),
+          type: PublicProfileType.company,
+          primaryActionLabel: 'Follow',
+          primaryActionIcon: Icons.person_add_alt_1_outlined,
+          stats: {
+            'Projects': '${c.projectsPosted}',
+            'Hires': '${c.hiresCount}',
+            'Owner': c.ownerName.split(' ').first,
+          },
+        );
       case PublicProfileType.investor:
-        return FollowManager.categoryInvestors;
+        final r = await sl<InvestorRepository>().getInvestor(widget.id);
+        final i = r.valueOrNull;
+        if (i == null) return null;
+        return ProfileViewData(
+          name: i.name,
+          headline: '${i.investorType} · ${i.company}',
+          location: i.location,
+          avatarUrl: i.avatarUrl,
+          isVerified: i.isVerified,
+          about: i.bio,
+          skills: i.interestedIndustries,
+          isFollowing: FollowManager.instance.isFollowing(
+            FollowManager.categoryInvestors,
+            i.id,
+          ),
+          isSaved: BookmarkManager.instance.isBookmarked(
+            BookmarkManager.categoryInvestors,
+            i.id,
+          ),
+          type: PublicProfileType.investor,
+          primaryActionLabel: 'Connect',
+          primaryActionIcon: Icons.handshake_outlined,
+          stats: {
+            'Deals': '${i.dealsCount}',
+            'Portfolio': '${i.portfolioCount}',
+            'Ticket': Formatters.compactCurrency(i.maxInvestment),
+          },
+        );
       case PublicProfileType.founder:
-        return FollowManager.categoryFounders;
-    }
-  }
-
-  /// Builds a ProfileViewData from the raw API data map.
-  ProfileViewData? _parse(Map<String, dynamic> raw) {
-    final id = raw['id']?.toString() ?? widget.id;
-    final fullName =
-        raw['fullName']?.toString() ?? raw['full_name']?.toString() ?? 'User';
-    final avatarUrl =
-        raw['avatarUrl']?.toString() ?? raw['avatar_url']?.toString();
-    final city = raw['city']?.toString() ?? '';
-    final country = raw['country']?.toString() ?? '';
-    final location = [city, country].where((e) => e.isNotEmpty).join(', ');
-    final bio = raw['bio']?.toString() ?? '';
-    final isVerified =
-        raw['isVerified'] as bool? ?? raw['is_verified'] as bool? ?? false;
-    final email = raw['email']?.toString() ?? '';
-    final phone = raw['phone']?.toString() ?? '';
-
-    switch (widget.type) {
-      case PublicProfileType.freelancer:
-        {
-          final fp = raw['freelancerProfile'] as Map? ?? {};
-          final skillsRaw = fp['skills']?.toString() ?? '';
-          final skills = skillsRaw.isNotEmpty
-              ? skillsRaw
-                    .split(',')
-                    .map((s) => s.trim())
-                    .where((s) => s.isNotEmpty)
-                    .toList()
-              : <String>[];
-          final hourlyRate = (fp['hourlyRate'] as num?)?.toDouble() ?? 0.0;
-          final experience = fp['experience']?.toString() ?? '';
-          return ProfileViewData(
-            name: fullName,
-            headline: [
-              experience,
-              if (hourlyRate > 0)
-                '${Formatters.compactCurrency(hourlyRate)}/hr',
-            ].join(' · '),
-            location: location,
-            avatarUrl: avatarUrl,
-            isVerified: isVerified,
-            about: bio,
-            skills: skills,
-            isFollowing: FollowManager.instance.isFollowing(
-              _followCategory,
-              id,
-            ),
-            isSaved: BookmarkManager.instance.isBookmarked(
-              _bookmarkCategory,
-              id,
-            ),
-            type: PublicProfileType.freelancer,
-            primaryActionLabel: 'Hire Now',
-            primaryActionIcon: Icons.handshake_outlined,
-            stats: {
-              'Experience': experience.isEmpty ? '—' : experience,
-              'Rate': hourlyRate > 0
-                  ? '${Formatters.compactCurrency(hourlyRate)}/hr'
-                  : '—',
-              'Skills': '${skills.length}',
-            },
-            phone: phone,
-            email: email,
-          );
-        }
-      case PublicProfileType.company:
-        {
-          final cp = raw['clientProfile'] as Map? ?? {};
-          final company = cp['company']?.toString() ?? fullName;
-          final industry = cp['industry']?.toString() ?? '';
-          return ProfileViewData(
-            name: company,
-            headline: industry.isNotEmpty ? industry : 'Client',
-            location: location,
-            avatarUrl: avatarUrl,
-            isVerified: isVerified,
-            about: bio,
-            isFollowing: FollowManager.instance.isFollowing(
-              _followCategory,
-              id,
-            ),
-            isSaved: BookmarkManager.instance.isBookmarked(
-              _bookmarkCategory,
-              id,
-            ),
-            type: PublicProfileType.company,
-            primaryActionLabel: 'Post a Job',
-            primaryActionIcon: Icons.work_outline_rounded,
-            stats: {
-              'Industry': industry.isEmpty ? '—' : industry,
-              'Manager': fullName.split(' ').first,
-            },
-            phone: phone,
-            email: email,
-          );
-        }
-      case PublicProfileType.investor:
-        {
-          final ip = raw['investorProfile'] as Map? ?? {};
-          final firm = ip['firm']?.toString() ?? '';
-          final ticketMin = (ip['ticketMin'] as num?)?.toDouble() ?? 0.0;
-          final ticketMax = (ip['ticketMax'] as num?)?.toDouble() ?? 0.0;
-          final focusRaw = ip['focusAreas']?.toString() ?? '';
-          final focus = focusRaw.isNotEmpty
-              ? focusRaw
-                    .split(',')
-                    .map((s) => s.trim())
-                    .where((s) => s.isNotEmpty)
-                    .toList()
-              : <String>[];
-          return ProfileViewData(
-            name: fullName,
-            headline: firm.isNotEmpty ? firm : 'Investor',
-            location: location,
-            avatarUrl: avatarUrl,
-            isVerified: isVerified,
-            about: bio,
-            skills: focus,
-            isFollowing: FollowManager.instance.isFollowing(
-              _followCategory,
-              id,
-            ),
-            isSaved: BookmarkManager.instance.isBookmarked(
-              _bookmarkCategory,
-              id,
-            ),
-            type: PublicProfileType.investor,
-            primaryActionLabel: 'Connect',
-            primaryActionIcon: Icons.handshake_outlined,
-            stats: {
-              'Firm': firm.isEmpty ? '—' : firm,
-              'Min Ticket': ticketMin > 0
-                  ? Formatters.compactCurrency(ticketMin)
-                  : '—',
-              'Max Ticket': ticketMax > 0
-                  ? Formatters.compactCurrency(ticketMax)
-                  : '—',
-            },
-            phone: phone,
-            email: email,
-          );
-        }
-      case PublicProfileType.founder:
-        {
-          final fp = raw['founderProfile'] as Map? ?? {};
-          final startupName = fp['startupName']?.toString() ?? fullName;
-          final industry = fp['industry']?.toString() ?? '';
-          final stage = fp['stage']?.toString() ?? '';
-          final teamSize = (fp['teamSize'] as num?)?.toInt() ?? 0;
-          final raised = (fp['raised'] as num?)?.toDouble() ?? 0.0;
-          return ProfileViewData(
-            name: fullName,
-            headline: [
-              startupName,
-              if (industry.isNotEmpty) industry,
-              if (stage.isNotEmpty) stage,
-            ].join(' · '),
-            location: location,
-            avatarUrl: avatarUrl,
-            isVerified: isVerified,
-            about: bio,
-            isFollowing: FollowManager.instance.isFollowing(
-              _followCategory,
-              id,
-            ),
-            isSaved: BookmarkManager.instance.isBookmarked(
-              _bookmarkCategory,
-              id,
-            ),
-            type: PublicProfileType.founder,
-            primaryActionLabel:
-                FollowManager.instance.isFollowing(_followCategory, id)
-                ? 'Unfollow'
-                : 'Follow',
-            primaryActionIcon:
-                FollowManager.instance.isFollowing(_followCategory, id)
-                ? Icons.person_remove_outlined
-                : Icons.person_add_alt_1_outlined,
-            stats: {
-              'Startup': startupName,
-              'Stage': stage.isEmpty ? '—' : stage,
-              'Team': teamSize > 0 ? '$teamSize' : '—',
-              'Raised': raised > 0 ? Formatters.compactCurrency(raised) : '—',
-            },
-            phone: phone,
-            email: email,
-          );
-        }
+        final r = await sl<FounderRepository>().getFounder(widget.id);
+        final f = r.valueOrNull;
+        if (f == null) return null;
+        return ProfileViewData(
+          name: f.name,
+          headline: '${f.founderType} · ${f.startupName}',
+          location: f.location,
+          avatarUrl: f.avatarUrl,
+          isVerified: f.isVerified,
+          about: f.bio,
+          skills: f.skills,
+          followers: f.followers,
+          isFollowing: FollowManager.instance.isFollowing(
+            FollowManager.categoryFounders,
+            f.id,
+          ),
+          isSaved: BookmarkManager.instance.isBookmarked(
+            BookmarkManager.categoryFounders,
+            f.id,
+          ),
+          type: PublicProfileType.founder,
+          primaryActionLabel: 'Invest',
+          primaryActionIcon: Icons.trending_up_rounded,
+          stats: {
+            'Followers': '${f.followers}',
+            'Experience': '${f.experienceYears}y',
+            'Startup': f.startupName,
+          },
+        );
     }
   }
 
@@ -461,314 +368,62 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         return FutureBuilder<Map<String, dynamic>>(
           future: _future,
           builder: (context, snapshot) {
-            final profile = snapshot.data?['profile'] as ProfileViewData?;
-            final reviews =
-                snapshot.data?['reviews'] as List<Review>? ?? const [];
-
+            final data = snapshot.data;
+            final profile = data?['profile'] as ProfileViewData?;
+            final reviews = data?['reviews'] as List<Review>? ?? const [];
             return Scaffold(
               appBar: AppBar(
-                title: Text(
-                  profile?.name ?? 'Profile',
-                  overflow: TextOverflow.ellipsis,
-                ),
+                title: Text(context.tr('Profile')),
                 actions: [
-                  if (profile != null)
-                    IconButton(
-                      icon: const Icon(Icons.share_outlined),
-                      tooltip: 'Share profile',
-                      onPressed: () => _showShareSheet(context, profile),
-                    ),
+                  IconButton(
+                    tooltip: context.tr('Share'),
+                    onPressed: profile == null
+                        ? null
+                        : () => context.showSnack('Share link copied'),
+                    icon: const Icon(Icons.share_outlined),
+                  ),
+                  IconButton(
+                    tooltip: context.tr('Scan'),
+                    onPressed: profile == null
+                        ? null
+                        : () => ProfileActions.showQr(context, profile),
+                    icon: const Icon(Icons.qr_code_rounded),
+                  ),
+                  IconButton(
+                    tooltip: context.tr('More'),
+                    onPressed: profile == null
+                        ? null
+                        : () => ProfileActions.showMore(context, profile),
+                    icon: const Icon(Icons.more_vert_rounded),
+                  ),
                 ],
               ),
-              body: () {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const AppLoadingShimmer(itemCount: 4, height: 120);
-                }
-                if (profile == null) return const AppErrorState();
-                return ProfileView(
-                  data: profile,
-                  reviews: reviews,
-                  onShare: () => _showShareSheet(context, profile),
-                  onPrimaryAction: () {
-                    if (profile.type == PublicProfileType.founder) {
-                      FollowManager.instance.toggleFollow(
-                        _followCategory,
-                        widget.id,
-                      );
-                    } else {
-                      context.showSnack(
+              body: snapshot.connectionState == ConnectionState.waiting
+                  ? const AppLoadingShimmer(itemCount: 4, height: 120)
+                  : profile == null
+                  ? const AppErrorState()
+                  : ProfileView(
+                      data: profile,
+                      reviews: reviews,
+                      onPrimaryAction: () => context.showSnack(
                         '${profile.primaryActionLabel} · ${profile.name}',
-                      );
-                    }
-                  },
-                  onMessage: () {
-                    final nameEncoded = Uri.encodeComponent(profile.name);
-                    final avatarEncoded = Uri.encodeComponent(
-                      profile.avatarUrl ?? '',
-                    );
-                    context.push(
-                      '${Routes.chat}/${widget.id}?name=$nameEncoded&avatarUrl=$avatarEncoded',
-                    );
-                  },
-                  onFollow: () => FollowManager.instance.toggleFollow(
-                    _followCategory,
-                    widget.id,
-                  ),
-                  onBookmark: () async {
-                    final currRole = context.read<AuthBloc>().state.user?.role;
-                    if (widget.type == PublicProfileType.investor) {
-                      if (currRole == UserRole.founder) {
-                        final api = sl<ApiClientHelper>();
-                        final isSaved = BookmarkManager.instance.isBookmarked(
-                          _bookmarkCategory,
-                          widget.id,
+                      ),
+                      onMessage: () {
+                        final nameEncoded = Uri.encodeComponent(profile.name);
+                        final avatarEncoded = Uri.encodeComponent(
+                          profile.avatarUrl ?? '',
                         );
-
-                        if (!isSaved) {
-                          final res = await api.postAction(
-                            '${ApiEndpoints.favorites}/toggle',
-                            body: {
-                              'entityType': 'investor',
-                              'entityId': widget.id,
-                            },
-                          );
-                          res.fold(
-                            (f) => context.showSnack(f.message, isError: true),
-                            (success) {
-                              BookmarkManager.instance.toggle(
-                                _bookmarkCategory,
-                                widget.id,
-                              );
-                              setState(() {
-                                _future = _loadAll();
-                              });
-                            },
-                          );
-                        } else {
-                          final favListRes = await api.get<dynamic>(
-                            ApiEndpoints.favorites,
-                            query: {'page': 1, 'limit': 100},
-                            parser: (data) => data,
-                          );
-                          await favListRes.fold(
-                            (f) async =>
-                                context.showSnack(f.message, isError: true),
-                            (data) async {
-                              String? uuid;
-                              try {
-                                if (data is Map) {
-                                  final items = data['items'];
-                                  if (items is List) {
-                                    for (final item in items) {
-                                      if (item is Map &&
-                                          item['entityId']?.toString() ==
-                                              widget.id) {
-                                        uuid = item['id']?.toString();
-                                        break;
-                                      }
-                                    }
-                                  }
-                                }
-                              } catch (e) {
-                                debugPrint('Error parsing favorites: $e');
-                              }
-
-                              if (uuid != null) {
-                                final delRes = await api.deleteAction(
-                                  '${ApiEndpoints.favorites}/$uuid',
-                                );
-                                delRes.fold(
-                                  (f) => context.showSnack(
-                                    f.message,
-                                    isError: true,
-                                  ),
-                                  (success) {
-                                    BookmarkManager.instance.toggle(
-                                      _bookmarkCategory,
-                                      widget.id,
-                                    );
-                                    setState(() {
-                                      _future = _loadAll();
-                                    });
-                                  },
-                                );
-                              } else {
-                                final delRes = await api.deleteAction(
-                                  '${ApiEndpoints.favorites}/${widget.id}',
-                                );
-                                delRes.fold(
-                                  (f) => context.showSnack(
-                                    f.message,
-                                    isError: true,
-                                  ),
-                                  (success) {
-                                    BookmarkManager.instance.toggle(
-                                      _bookmarkCategory,
-                                      widget.id,
-                                    );
-                                    setState(() {
-                                      _future = _loadAll();
-                                    });
-                                  },
-                                );
-                              }
-                            },
-                          );
-                        }
-                      } else {
-                        final repo = sl<InvestorRepository>();
-                        final res = await repo.toggleSave(widget.id);
-                        res.fold(
-                          (f) {
-                            context.showSnack(f.message, isError: true);
-                          },
-                          (success) {
-                            BookmarkManager.instance.toggle(
-                              _bookmarkCategory,
-                              widget.id,
-                            );
-                            setState(() {
-                              _future = _loadAll();
-                            });
-                          },
+                        context.push(
+                          '${Routes.chat}/${widget.id}?name=$nameEncoded&avatarUrl=$avatarEncoded',
                         );
-                      }
-                    } else if (widget.type == PublicProfileType.founder) {
-                      if (currRole == UserRole.investor) {
-                        final api = sl<ApiClientHelper>();
-                        final isSaved = BookmarkManager.instance.isBookmarked(
-                          _bookmarkCategory,
-                          widget.id,
-                        );
-
-                        if (!isSaved) {
-                          final res = await api.postAction(
-                            '${ApiEndpoints.favorites}/toggle',
-                            body: {
-                              'entityType': 'founder',
-                              'entityId': widget.id,
-                            },
-                          );
-                          res.fold(
-                            (f) => context.showSnack(f.message, isError: true),
-                            (success) {
-                              BookmarkManager.instance.toggle(
-                                _bookmarkCategory,
-                                widget.id,
-                              );
-                              setState(() {
-                                _future = _loadAll();
-                              });
-                            },
-                          );
-                        } else {
-                          final favListRes = await api.get<dynamic>(
-                            ApiEndpoints.favorites,
-                            query: {'page': 1, 'limit': 100},
-                            parser: (data) => data,
-                          );
-                          await favListRes.fold(
-                            (f) async =>
-                                context.showSnack(f.message, isError: true),
-                            (data) async {
-                              String? uuid;
-                              try {
-                                if (data is Map) {
-                                  final items = data['items'];
-                                  if (items is List) {
-                                    for (final item in items) {
-                                      if (item is Map &&
-                                          item['entityId']?.toString() ==
-                                              widget.id) {
-                                        uuid = item['id']?.toString();
-                                        break;
-                                      }
-                                    }
-                                  }
-                                }
-                              } catch (e) {
-                                debugPrint('Error parsing favorites: $e');
-                              }
-
-                              if (uuid != null) {
-                                final delRes = await api.deleteAction(
-                                  '${ApiEndpoints.favorites}/$uuid',
-                                );
-                                delRes.fold(
-                                  (f) => context.showSnack(
-                                    f.message,
-                                    isError: true,
-                                  ),
-                                  (success) {
-                                    BookmarkManager.instance.toggle(
-                                      _bookmarkCategory,
-                                      widget.id,
-                                    );
-                                    setState(() {
-                                      _future = _loadAll();
-                                    });
-                                  },
-                                );
-                              } else {
-                                final delRes = await api.deleteAction(
-                                  '${ApiEndpoints.favorites}/${widget.id}',
-                                );
-                                delRes.fold(
-                                  (f) => context.showSnack(
-                                    f.message,
-                                    isError: true,
-                                  ),
-                                  (success) {
-                                    BookmarkManager.instance.toggle(
-                                      _bookmarkCategory,
-                                      widget.id,
-                                    );
-                                    setState(() {
-                                      _future = _loadAll();
-                                    });
-                                  },
-                                );
-                              }
-                            },
-                          );
-                        }
-                      } else {
-                        final api = sl<ApiClientHelper>();
-                        final post = await api.postAction(
-                          ApiEndpoints.investorFounderSave(widget.id),
-                        );
-                        final res = post.isSuccess
-                            ? post
-                            : await api.deleteAction(
-                                ApiEndpoints.investorFounderSave(widget.id),
-                              );
-                        res.fold(
-                          (f) {
-                            context.showSnack(f.message, isError: true);
-                          },
-                          (success) {
-                            BookmarkManager.instance.toggle(
-                              _bookmarkCategory,
-                              widget.id,
-                            );
-                            setState(() {
-                              _future = _loadAll();
-                            });
-                          },
-                        );
-                      }
-                    } else {
-                      await BookmarkManager.instance.toggle(
-                        _bookmarkCategory,
+                      },
+                      onFollow: () => FollowManager.instance.toggleFollow(
+                        _category,
                         widget.id,
-                      );
-                      setState(() {
-                        _future = _loadAll();
-                      });
-                    }
-                  },
-                );
-              }(),
+                      ),
+                      onBookmark: () =>
+                          BookmarkManager.instance.toggle(_category, widget.id),
+                    ),
             );
           },
         );

@@ -81,7 +81,7 @@ class ProfileView extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        _banner(context),
+        _banner(),
         Transform.translate(
           offset: const Offset(0, -40),
           child: Padding(
@@ -172,7 +172,7 @@ class ProfileView extends StatelessWidget {
     );
   }
 
-  Widget _banner(BuildContext context) => Container(
+  Widget _banner() => Container(
     height: 150,
     decoration: BoxDecoration(
       gradient: AppColors.primaryGradient,
@@ -192,81 +192,76 @@ class ProfileView extends StatelessWidget {
           ],
         ),
       ),
-      child: SafeArea(
-        child: Align(
-          alignment: Alignment.topRight,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSizes.sm),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _bannerAction(context, Icons.share_outlined, onShare ?? () {}),
-                _bannerAction(
-                  context,
-                  Icons.more_vert_rounded,
-                  () => _more(context),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     ),
   );
 
-  Widget _bannerAction(
-    BuildContext context,
-    IconData icon,
-    VoidCallback onTap,
-  ) => IconButton(
-    onPressed: onTap,
-    icon: Icon(icon, color: Colors.white, size: 20),
-  );
-
   Widget _actions(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: onPrimaryAction,
-            icon: Icon(data.primaryActionIcon, size: 18),
-            label: Text(data.primaryActionLabel),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              minimumSize: const Size.fromHeight(46),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 430;
+        final primary = FilledButton.icon(
+          onPressed: onPrimaryAction,
+          icon: Icon(data.primaryActionIcon, size: 18),
+          label: Text(context.tr(data.primaryActionLabel)),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            minimumSize: const Size.fromHeight(46),
           ),
-        ),
-        AppSizes.hGapMd,
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: onMessage,
-            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-            label: const Text('Message'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(46),
-            ),
+        );
+        final message = OutlinedButton.icon(
+          onPressed: onMessage,
+          icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+          label: Text(context.tr('Message')),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(46),
           ),
-        ),
-        AppSizes.hGapMd,
-        if (data.type != PublicProfileType.founder) ...[
-          _iconAction(
-            context,
-            data.isFollowing
-                ? Icons.person_remove_outlined
-                : Icons.person_add_alt_1_outlined,
-            onFollow,
-          ),
-          AppSizes.hGapMd,
-        ],
-        _iconAction(
+        );
+        final follow = _iconAction(
+          context,
+          data.isFollowing
+              ? Icons.person_remove_outlined
+              : Icons.person_add_alt_1_outlined,
+          onFollow,
+        );
+        final bookmark = _iconAction(
           context,
           data.isSaved
               ? Icons.bookmark_rounded
               : Icons.bookmark_outline_rounded,
           onBookmark,
-        ),
-      ],
+        );
+
+        if (!compact) {
+          return Row(
+            children: [
+              Expanded(child: primary),
+              AppSizes.hGapMd,
+              Expanded(child: message),
+              AppSizes.hGapMd,
+              follow,
+              AppSizes.hGapMd,
+              bookmark,
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            Row(
+              children: [
+                Expanded(child: primary),
+                AppSizes.hGapMd,
+                Expanded(child: message),
+              ],
+            ),
+            AppSizes.vGapSm,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [follow, AppSizes.hGapMd, bookmark],
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -298,7 +293,7 @@ class ProfileView extends StatelessWidget {
               children: [
                 Text(entry.value, style: context.text.titleMedium),
                 Text(
-                  entry.key,
+                  context.tr(entry.key),
                   style: context.text.labelSmall,
                   textAlign: TextAlign.center,
                 ),
@@ -367,102 +362,131 @@ class ProfileView extends StatelessWidget {
       ),
     ),
   );
+}
 
-  void _more(BuildContext context) => AppActionSheet.show(
-    context,
-    title: data.name,
-    actions: [
-      AppAction(
-        label: 'Share Profile',
-        icon: Icons.share_outlined,
-        onTap: () => onShare?.call(),
-      ),
-      AppAction(
-        label: 'Contact Now (Call/Email/WA)',
-        icon: Icons.contact_phone_outlined,
-        onTap: () => ContactWorkflow.showContactOptions(
-          context,
-          name: data.name,
-          phone: data.phone,
-          emailAddress: data.email,
+class ProfileActions {
+  ProfileActions._();
+
+  static void showMore(BuildContext context, ProfileViewData data) =>
+      AppActionSheet.show(
+        context,
+        title: data.name,
+        actions: [
+          AppAction(
+            label: 'Contact Now (Call/Email/WA)',
+            icon: Icons.contact_phone_outlined,
+            onTap: () => ContactWorkflow.showContactOptions(
+              context,
+              name: data.name,
+              phone: data.phone,
+              emailAddress: data.email,
+            ),
+          ),
+          AppAction(
+            label: 'Schedule Meeting',
+            icon: Icons.event_outlined,
+            onTap: () => ContactWorkflow.scheduleMeeting(context, data.name),
+          ),
+          AppAction(
+            label: 'Book Consultation',
+            icon: Icons.calendar_today_outlined,
+            onTap: () => ContactWorkflow.bookConsultation(context, data.name),
+          ),
+          AppAction(
+            label: 'Voice Call Placeholder',
+            icon: Icons.phone_callback_outlined,
+            onTap: () =>
+                context.showSnack('Voice calling ${data.name} (WebRTC ready)…'),
+          ),
+          AppAction(
+            label: 'Video Call Placeholder',
+            icon: Icons.video_call_outlined,
+            onTap: () =>
+                context.showSnack('Video calling ${data.name} (WebRTC ready)…'),
+          ),
+          AppAction(
+            label: 'Invite ${data.name}',
+            icon: Icons.person_add_alt_1_outlined,
+            onTap: () => ContactWorkflow.invite(context, data.name),
+          ),
+          if (data.type == PublicProfileType.freelancer)
+            AppAction(
+              label: 'Hire Now',
+              icon: Icons.handshake_outlined,
+              onTap: () => ContactWorkflow.hire(context, data.name),
+            ),
+          if (data.type == PublicProfileType.investor ||
+              data.type == PublicProfileType.founder)
+            AppAction(
+              label: 'Express Interest',
+              icon: Icons.favorite_border_rounded,
+              onTap: () => ContactWorkflow.expressInterest(context, data.name),
+            ),
+          AppAction(
+            label: 'Copy Profile Link',
+            icon: Icons.link_rounded,
+            onTap: () {
+              context.showSnack('Profile link copied to clipboard!');
+            },
+          ),
+          if (data.type == PublicProfileType.freelancer)
+            AppAction(
+              label: 'Download Resume',
+              icon: Icons.download_rounded,
+              onTap: () =>
+                  context.showSnack('Downloading Resume of ${data.name}…'),
+            ),
+          if (data.type == PublicProfileType.company)
+            AppAction(
+              label: 'Download Company Profile',
+              icon: Icons.download_rounded,
+              onTap: () => context.showSnack('Downloading Company Profile…'),
+            ),
+          if (data.type == PublicProfileType.founder)
+            AppAction(
+              label: 'Download Pitch Deck',
+              icon: Icons.download_rounded,
+              onTap: () => context.showSnack('Downloading Pitch Deck…'),
+            ),
+          AppAction(
+            label: 'Download Portfolio',
+            icon: Icons.download_rounded,
+            onTap: () => context.showSnack('Downloading Portfolio…'),
+          ),
+          AppAction(
+            label: 'Report Profile',
+            icon: Icons.flag_outlined,
+            isDestructive: true,
+            onTap: () =>
+                context.showSnack('Report submitted for investigation.'),
+          ),
+        ],
+      );
+
+  static void showQr(BuildContext context, ProfileViewData data) => showDialog(
+    context: context,
+    builder: (_) => Dialog(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(data.name, style: context.text.titleMedium),
+            AppSizes.vGapLg,
+            Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                color: context.theme.scaffoldBackgroundColor,
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              ),
+              child: const Icon(Icons.qr_code_2_rounded, size: 150),
+            ),
+            AppSizes.vGapMd,
+            Text('Scan to view public profile', style: context.text.bodySmall),
+          ],
         ),
       ),
-      AppAction(
-        label: 'Schedule Meeting',
-        icon: Icons.event_outlined,
-        onTap: () => ContactWorkflow.scheduleMeeting(context, data.name),
-      ),
-      AppAction(
-        label: 'Book Consultation',
-        icon: Icons.calendar_today_outlined,
-        onTap: () => ContactWorkflow.bookConsultation(context, data.name),
-      ),
-      AppAction(
-        label: 'Voice Call Placeholder',
-        icon: Icons.phone_callback_outlined,
-        onTap: () =>
-            context.showSnack('Voice calling ${data.name} (WebRTC ready)…'),
-      ),
-      AppAction(
-        label: 'Video Call Placeholder',
-        icon: Icons.video_call_outlined,
-        onTap: () =>
-            context.showSnack('Video calling ${data.name} (WebRTC ready)…'),
-      ),
-      AppAction(
-        label: 'Invite ${data.name}',
-        icon: Icons.person_add_alt_1_outlined,
-        onTap: () => ContactWorkflow.invite(context, data.name),
-      ),
-      if (data.type == PublicProfileType.freelancer)
-        AppAction(
-          label: 'Hire Now',
-          icon: Icons.handshake_outlined,
-          onTap: () => ContactWorkflow.hire(context, data.name),
-        ),
-      if (data.type == PublicProfileType.investor ||
-          data.type == PublicProfileType.founder)
-        AppAction(
-          label: 'Express Interest',
-          icon: Icons.favorite_border_rounded,
-          onTap: () => ContactWorkflow.expressInterest(context, data.name),
-        ),
-      AppAction(
-        label: 'Copy Profile Link',
-        icon: Icons.link_rounded,
-        onTap: () {
-          context.showSnack('Profile link copied to clipboard!');
-        },
-      ),
-      if (data.type == PublicProfileType.freelancer)
-        AppAction(
-          label: 'Download Resume',
-          icon: Icons.download_rounded,
-          onTap: () => context.showSnack('Downloading Resume of ${data.name}…'),
-        ),
-      if (data.type == PublicProfileType.company)
-        AppAction(
-          label: 'Download Company Profile',
-          icon: Icons.download_rounded,
-          onTap: () => context.showSnack('Downloading Company Profile…'),
-        ),
-      if (data.type == PublicProfileType.founder)
-        AppAction(
-          label: 'Download Pitch Deck',
-          icon: Icons.download_rounded,
-          onTap: () => context.showSnack('Downloading Pitch Deck…'),
-        ),
-      AppAction(
-        label: 'Download Portfolio',
-        icon: Icons.download_rounded,
-        onTap: () => context.showSnack('Downloading Portfolio…'),
-      ),
-      AppAction(
-        label: 'Report Profile',
-        icon: Icons.flag_outlined,
-        isDestructive: true,
-        onTap: () => context.showSnack('Report submitted for investigation.'),
-      ),
-    ],
+    ),
   );
 }

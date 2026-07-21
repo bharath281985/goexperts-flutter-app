@@ -45,7 +45,7 @@ class AppConfig {
   static const Duration receiveTimeout = Duration(seconds: 20);
 
   static const RealtimeProvider realtimeProvider = RealtimeProvider.socketIo;
-  static const String socketUrl = 'https://mobileapi.goexperts.in:443';
+  static const String socketUrl = 'https://mobileapi.goexperts.in';
 
   static const int defaultPageSize = 15;
 

@@ -1,19 +1,26 @@
+import 'dart:io';
+
+import 'package:country_code_picker/country_code_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
+import '../../../../app/constants/app_colors.dart';
 import '../../../../app/constants/app_sizes.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/network/api_client_helper.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/network/file_upload_helper.dart';
+import '../../../../core/utils/phone_validation.dart';
+import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_primary_button.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_location_field.dart';
 import '../../../../core/utils/result.dart';
 import '../../../../core/widgets/app_text_field.dart';
-import '../../../../core/widgets/profile_avatar_editor.dart';
+import '../../../../core/widgets/country_code_field.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 
 class FounderPitchDeckLivePage extends StatefulWidget {
@@ -32,15 +39,19 @@ class FounderProfileLivePage extends StatefulWidget {
 }
 
 class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
+  final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _fullName = TextEditingController();
   final _bio = TextEditingController();
-  final _phone = TextEditingController();
+  final _mobile = TextEditingController();
   final _country = TextEditingController();
   final _city = TextEditingController();
 
   String? _avatarUrl;
-  String? _localAvatarPath;
+  Uint8List? _avatarBytes;
+  String _countryCode = '+91';
+  String _countryIsoCode = 'IN';
+  String _countryName = 'India';
   bool _loading = true;
   bool _saving = false;
 
@@ -55,7 +66,7 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
     _email.dispose();
     _fullName.dispose();
     _bio.dispose();
-    _phone.dispose();
+    _mobile.dispose();
     _country.dispose();
     _city.dispose();
     super.dispose();
@@ -97,12 +108,9 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
   }
 
   Future<void> _save() async {
-    final fullName = _fullName.text.trim();
+    if (!_formKey.currentState!.validate()) return;
 
-    if (fullName.isEmpty) {
-      context.showSnack('Name is required', isError: true);
-      return;
-    }
+    final fullName = _fullName.text.trim();
 
     setState(() => _saving = true);
     final Map<String, dynamic> body = {
@@ -179,7 +187,7 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
 
   @override
   Widget build(BuildContext context) => AppScaffold(
-    appBar: AppBar(title: const Text('Founder Profile')),
+    appBar: AppBar(title: Text(context.tr('Founder Profile'))),
     body: _loading
         ? const Center(child: CircularProgressIndicator())
         : ListView(
@@ -192,55 +200,89 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
                   onPathPicked: (path) =>
                       setState(() => _localAvatarPath = path),
                 ),
-              ),
-              AppSizes.vGapXl,
-              AppTextField(
-                controller: _email,
-                label: 'Email',
-                hint: 'Email Address',
-                readOnly: true,
-              ),
-              AppSizes.vGapMd,
-              AppTextField(
-                controller: _fullName,
-                label: 'Name',
-                hint: 'Enter your name',
-              ),
-              AppSizes.vGapMd,
-              AppTextField(
-                controller: _phone,
-                label: 'Phone',
-                hint: 'Enter your phone number',
-              ),
-              AppSizes.vGapMd,
-              AppTextField(
-                controller: _country,
-                label: 'Country',
-                hint: 'Enter your country',
-              ),
-              AppSizes.vGapMd,
-              AppLocationField(
-                controller: _city,
-                label: 'City',
-                hint: 'Search and select your city',
-              ),
-              AppSizes.vGapMd,
-              AppTextField(
-                controller: _bio,
-                label: 'Bio',
-                hint: 'Enter your bio',
-                maxLines: 4,
-              ),
-              AppSizes.vGapXl,
-              AppPrimaryButton(
-                label: 'Save',
-                isLoading: _saving,
-                onPressed: _save,
-              ),
-              AppSizes.vGapXl,
-            ],
+                AppSizes.vGapXs,
+                Padding(
+                  padding: const EdgeInsets.only(left: 140),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      PhoneValidation.counterText(
+                        value: _mobile.text,
+                        countryIsoCode: _countryIsoCode,
+                      ),
+                      style: context.text.bodySmall?.copyWith(
+                        color: AppColors.mutedText,
+                      ),
+                    ),
+                  ),
+                ),
+                AppSizes.vGapMd,
+                AppTextField(
+                  controller: _country,
+                  label: 'Country',
+                  hint: 'Enter your country',
+                  validator: (v) =>
+                      _requiredValidator(v, 'Country is required'),
+                ),
+                AppSizes.vGapMd,
+                AppLocationField(
+                  controller: _city,
+                  label: 'Address',
+                  hint: 'Search and select your address',
+                  validator: (v) =>
+                      _requiredValidator(v, 'Address is required'),
+                ),
+                AppSizes.vGapMd,
+                AppTextField(
+                  controller: _bio,
+                  label: 'Bio',
+                  hint: 'Enter your bio',
+                  maxLines: 4,
+                  validator: (v) => _requiredValidator(v, 'Bio is required'),
+                ),
+                AppSizes.vGapXl,
+                AppPrimaryButton(
+                  label: 'Save',
+                  isLoading: _saving,
+                  onPressed: _save,
+                ),
+                AppSizes.vGapXl,
+              ],
+            ),
           ),
   );
+}
+
+String _countryIsoFromDialCode(String dialCode) {
+  switch (dialCode.trim()) {
+    case '+1':
+      return 'US';
+    case '+44':
+      return 'GB';
+    case '+61':
+      return 'AU';
+    case '+971':
+      return 'AE';
+    case '+91':
+    default:
+      return 'IN';
+  }
+}
+
+String _countryNameFromIso(String isoCode) {
+  switch (isoCode.toUpperCase()) {
+    case 'US':
+      return 'United States';
+    case 'GB':
+      return 'United Kingdom';
+    case 'AU':
+      return 'Australia';
+    case 'AE':
+      return 'United Arab Emirates';
+    case 'IN':
+    default:
+      return 'India';
+  }
 }
 
 class FounderFundingLivePage extends StatefulWidget {

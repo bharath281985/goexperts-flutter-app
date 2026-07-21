@@ -123,7 +123,9 @@ class AppInvestorCard extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(40),
                   ),
-                  child: Text(investor.isFollowing ? 'Following' : 'Follow'),
+                  child: Text(
+                    context.tr(investor.isFollowing ? 'Following' : 'Follow'),
+                  ),
                 ),
               ),
               AppSizes.hGapMd,
@@ -134,7 +136,7 @@ class AppInvestorCard extends StatelessWidget {
                     backgroundColor: AppColors.primary,
                     minimumSize: const Size.fromHeight(40),
                   ),
-                  child: const Text('Connect'),
+                  child: Text(context.tr('Connect')),
                 ),
               ),
             ],
@@ -147,7 +149,7 @@ class AppInvestorCard extends StatelessWidget {
   Widget _stat(BuildContext context, String label, String value) => Column(
     children: [
       Text(value, style: context.text.titleSmall, textAlign: TextAlign.center),
-      Text(label, style: context.text.labelSmall),
+      Text(context.tr(label), style: context.text.labelSmall),
     ],
   );
 
