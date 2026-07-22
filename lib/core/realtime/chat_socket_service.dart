@@ -42,7 +42,7 @@ class ChatSocketService {
       final socket = io.io(
         AppConfig.socketUrl,
         io.OptionBuilder()
-            .setTransports(['websocket'])
+            .setTransports(['polling', 'websocket'])
             .disableAutoConnect()
             .enableReconnection()
             .setReconnectionAttempts(12)

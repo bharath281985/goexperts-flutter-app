@@ -37,14 +37,10 @@ class AppActionSheet {
               if (title != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
-                    AppSizes.lg,
-                    0,
-                    AppSizes.lg,
-                    AppSizes.sm,
-                  ),
+                      AppSizes.lg, 0, AppSizes.lg, AppSizes.sm),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(ctx.tr(title), style: ctx.text.titleMedium),
+                    child: Text(title, style: ctx.text.titleMedium),
                   ),
                 ),
               ...actions.map(
@@ -54,7 +50,7 @@ class AppActionSheet {
                     color: a.isDestructive ? AppColors.danger : null,
                   ),
                   title: Text(
-                    ctx.tr(a.label),
+                    a.label,
                     style: ctx.text.bodyLarge?.copyWith(
                       color: a.isDestructive ? AppColors.danger : null,
                     ),

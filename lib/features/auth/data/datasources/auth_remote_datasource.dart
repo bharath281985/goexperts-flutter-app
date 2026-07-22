@@ -185,7 +185,10 @@ class AuthRemoteDatasource {
   }) async {
     final result = await _api.postAction(
       ApiEndpoints.changePassword,
-      body: {'oldPassword': oldPassword, 'newPassword': newPassword},
+      body: {
+        'oldPassword': oldPassword,
+        'newPassword': newPassword,
+      },
     );
     return result.fold(
       (f) => throw Exception(f.message),

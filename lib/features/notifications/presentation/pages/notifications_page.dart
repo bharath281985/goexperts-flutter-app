@@ -40,7 +40,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final repo = sl<NotificationRepository>();
     return AppScaffold(
       appBar: AppBar(
-        title: Text('${context.tr('Notifications')} ($_unread)'),
+        title: Text('Notifications ($_unread)'),
         actions: [
           TextButton(
             onPressed: () async {
@@ -52,7 +52,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               });
               await _loadUnread();
             },
-            child: Text(context.tr('Mark all read')),
+            child: const Text('Mark all read'),
           ),
         ],
       ),

@@ -5,7 +5,6 @@ class AppSizes {
   AppSizes._();
 
   // Spacing scale
-  static const double s = 2;
   static const double xs = 4;
   static const double sm = 8;
   static const double md = 12;
@@ -64,7 +63,6 @@ class AppSizes {
   static const vGap4xl = SizedBox(height: x4xl);
   static const vGap5xl = SizedBox(height: x5xl);
 
-  static const hGapS = SizedBox(width: s);
   static const hGapXs = SizedBox(width: xs);
   static const hGapSm = SizedBox(width: sm);
   static const hGapMd = SizedBox(width: md);

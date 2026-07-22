@@ -11,12 +11,11 @@ import '../../features/projects/presentation/pages/projects_list_view.dart';
 import '../../features/proposals/presentation/pages/proposals_list_view.dart';
 import '../../features/startup_ideas/presentation/pages/startups_list_view.dart';
 import '../widgets/app_scaffold.dart';
-import '../extensions/context_extensions.dart';
 
 /// Thin standalone pages that wrap the embeddable catalog views with an
 /// app bar, used when reached from the drawer / deep links (not as tabs).
 AppScaffold _wrap(String title, Widget body) => AppScaffold(
-  appBar: AppBar(title: Builder(builder: (context) => Text(context.tr(title)))),
+  appBar: AppBar(title: Text(title)),
   body: body,
 );
 

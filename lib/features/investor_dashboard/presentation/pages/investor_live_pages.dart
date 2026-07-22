@@ -1,6 +1,3 @@
-import 'dart:io';
-
-import 'package:country_code_picker/country_code_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,12 +8,10 @@ import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/network/api_client_helper.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/network/file_upload_helper.dart';
-import '../../../../core/utils/phone_validation.dart';
-import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/app_location_field.dart';
 import '../../../../core/widgets/app_primary_button.dart';
 import '../../../../core/widgets/app_scaffold.dart';
+import '../../../../core/widgets/app_location_field.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/profile_avatar_editor.dart';
 import '../../../../core/utils/result.dart';
@@ -29,12 +24,10 @@ class InvestorProfilePage extends StatefulWidget {
 }
 
 class _InvestorProfilePageState extends State<InvestorProfilePage> {
-  final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _fullName = TextEditingController();
   final _company = TextEditingController();
-  final _phoneCode = TextEditingController();
-  final _phoneNumber = TextEditingController();
+  final _phone = TextEditingController();
   final _country = TextEditingController();
   final _city = TextEditingController();
   final _bio = TextEditingController();
@@ -56,8 +49,7 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
     _email.dispose();
     _fullName.dispose();
     _company.dispose();
-    _phoneCode.dispose();
-    _phoneNumber.dispose();
+    _phone.dispose();
     _country.dispose();
     _city.dispose();
     _bio.dispose();
@@ -81,32 +73,11 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
           m['name']?.toString() ??
           '';
       _company.text = m['company']?.toString() ?? m['firm']?.toString() ?? '';
-      _countryCode =
-          user['phoneCode']?.toString() ??
-          user['countryCode']?.toString() ??
-          m['phoneCode']?.toString() ??
-          m['countryCode']?.toString() ??
-          '+91';
-      _phoneCode.text = _countryCode;
-      _countryIsoCode = _countryIsoFromDialCode(_countryCode);
-      _countryName = _countryNameFromIso(_countryIsoCode);
-      _phoneNumber.text = PhoneValidation.trimToRequiredLength(
-        user['phoneNumber']?.toString() ??
-            user['mobileNo']?.toString() ??
-            user['phone']?.toString() ??
-            m['phoneNumber']?.toString() ??
-            m['mobileNo']?.toString() ??
-            m['phone']?.toString() ??
-            '',
-        _countryIsoCode,
-      );
+      _phone.text = user['phone']?.toString() ?? m['phone']?.toString() ?? '';
       _country.text =
           user['country']?.toString() ?? m['country']?.toString() ?? '';
 
-      final city =
-          user['address']?.toString() ??
-          user['city']?.toString() ??
-          m['address']?.toString();
+      final city = user['city']?.toString();
       final location = m['location']?.toString();
       _city.text = city ?? location ?? '';
 
@@ -126,9 +97,12 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
   }
 
   Future<void> _save() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-
     final fullName = _fullName.text.trim();
+
+    if (fullName.isEmpty) {
+      context.showSnack('Name is required', isError: true);
+      return;
+    }
 
     setState(() => _saving = true);
     final Map<String, dynamic> body = {
@@ -200,79 +174,23 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      appBar: AppBar(title: Text(context.tr('Investor Profile'))),
+      appBar: AppBar(title: const Text('Investor Profile')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(AppSizes.screenPadding),
-                children: [
-                  AppCard(
-                    child: Row(
-                      children: [
-                        Text(
-                          context.tr(
-                            _verified
-                                ? 'Verified investor'
-                                : 'Verification pending',
-                          ),
-                        ),
-                        const Spacer(),
-                        Text('${context.tr('Completion')} ${_completion()}%'),
-                      ],
-                    ),
-                  ),
-                  AppSizes.vGapXl,
-                  Center(
-                    child: Stack(
-                      children: [
-                        AppAvatar(
-                          name: _fullName.text.trim().isEmpty
-                              ? context.tr('Investor')
-                              : _fullName.text.trim(),
-                          imageUrl: _avatarUrl,
-                          imageBytes: _avatarBytes,
-                          size: 100,
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: IconButton(
-                            style: IconButton.styleFrom(
-                              backgroundColor: Theme.of(context).primaryColor,
-                              foregroundColor: Colors.white,
-                            ),
-                            icon: const Icon(Icons.edit, size: 20),
-                            onPressed: _saving ? null : _pickAvatar,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  AppSizes.vGapXl,
-                  AppTextField(
-                    controller: _email,
-                    label: 'Email',
-                    hint: 'Email Address',
-                    readOnly: true,
-                    validator: (v) =>
-                        _requiredValidator(v, 'Email is required'),
-                  ),
-                  AppSizes.vGapMd,
-                  AppTextField(
-                    controller: _fullName,
-                    label: 'Name',
-                    hint: 'Enter your name',
-                    validator: (v) => _requiredValidator(v, 'Name is required'),
-                  ),
-                  AppSizes.vGapMd,
-                  AppTextField(
-                    controller: _company,
-                    label: 'Company',
-                    hint: 'Enter company name',
-                    validator: (v) =>
-                        _requiredValidator(v, 'Company name is required'),
+          : ListView(
+              padding: const EdgeInsets.all(AppSizes.screenPadding),
+              children: [
+                AppCard(
+                  child: Row(
+                    children: [
+                      Text(
+                        _verified
+                            ? 'Verified investor'
+                            : 'Verification pending',
+                      ),
+                      const Spacer(),
+                      Text('Completion ${_completion()}%'),
+                    ],
                   ),
                 ),
                 AppSizes.vGapXl,
@@ -342,38 +260,6 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
     final values = [_fullName.text, _company.text, _city.text, _bio.text];
     final filled = values.where((e) => e.trim().isNotEmpty).length;
     return ((filled / 4) * 100).round();
-  }
-}
-
-String _countryNameFromIso(String isoCode) {
-  switch (isoCode.toUpperCase()) {
-    case 'US':
-      return 'United States';
-    case 'GB':
-      return 'United Kingdom';
-    case 'AU':
-      return 'Australia';
-    case 'AE':
-      return 'United Arab Emirates';
-    case 'IN':
-    default:
-      return 'India';
-  }
-}
-
-String _countryIsoFromDialCode(String dialCode) {
-  switch (dialCode.trim()) {
-    case '+1':
-      return 'US';
-    case '+44':
-      return 'GB';
-    case '+61':
-      return 'AU';
-    case '+971':
-      return 'AE';
-    case '+91':
-    default:
-      return 'IN';
   }
 }
 
