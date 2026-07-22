@@ -174,9 +174,7 @@ class _FounderProfileLivePageState extends State<FounderProfileLivePage> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-
     final fullName = _fullName.text.trim();
-
     setState(() => _saving = true);
     final res = await sl<ApiClientHelper>().putEnvelope<String>(
       ApiEndpoints.founderProfile,

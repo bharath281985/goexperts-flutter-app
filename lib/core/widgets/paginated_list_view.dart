@@ -80,10 +80,28 @@ class _PaginatedListViewState<T> extends State<PaginatedListView<T>> {
   @override
   Widget build(BuildContext context) {
     if (widget.status == ViewStatus.loading) {
-      return AppLoadingShimmer(height: widget.skeletonHeight);
+      return RefreshIndicator(
+        onRefresh: widget.onRefresh,
+        child: AppLoadingShimmer(
+          height: widget.skeletonHeight,
+          physics: const AlwaysScrollableScrollPhysics(),
+        ),
+      );
     }
     if (widget.status == ViewStatus.failure && widget.items.isEmpty) {
-      return AppErrorState(message: widget.errorMessage, onRetry: widget.onRefresh);
+      return RefreshIndicator(
+        onRefresh: widget.onRefresh,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.7,
+            child: AppErrorState(
+              message: widget.errorMessage,
+              onRetry: widget.onRefresh,
+            ),
+          ),
+        ),
+      );
     }
     if (widget.status == ViewStatus.empty ||
         (widget.status == ViewStatus.success && widget.items.isEmpty)) {

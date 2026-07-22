@@ -77,10 +77,26 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                           : Icons.bookmark_outline_rounded,
                       color: isSaved ? AppColors.primary : null,
                     ),
-                    onPressed: () => BookmarkManager.instance.toggle(
-                      BookmarkManager.categoryStartups,
-                      widget.id,
-                    ),
+                    onPressed: () async {
+                      if (_isLoadingAction) return;
+                      final repo = sl<StartupRepository>();
+                      final res = await repo.toggleSave(widget.id);
+
+                      if (mounted) {
+                        res.fold(
+                          (f) => context.showSnack(f.message, isError: true),
+                          (success) {
+                            BookmarkManager.instance.toggle(
+                              BookmarkManager.categoryStartups,
+                              widget.id,
+                            );
+                            context.showSnack(
+                              !isSaved ? 'Saved startup' : 'Removed from saved',
+                            );
+                          },
+                        );
+                      }
+                    },
                   ),
                 ],
               ),
@@ -191,6 +207,14 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                               context.push(
                                 '${Routes.apply}?type=Investment&name=${Uri.encodeComponent(s.name)}&projectId=${s.id}',
                               );
+                              if (mounted) {
+                                setState(() {
+                                  _hasInvestedOverride = null;
+                                  _future = sl<StartupRepository>().getStartup(
+                                    widget.id,
+                                  );
+                                });
+                              }
                             }
                           },
                         ),

@@ -6,6 +6,8 @@ import '../../../../app/constants/app_sizes.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/network/api_client_helper.dart';
+import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/utils/bookmark_manager.dart';
 import '../../../../core/utils/enums.dart';
 import '../../../../core/utils/paginated.dart';
@@ -29,7 +31,6 @@ import '../../../startup_ideas/presentation/widgets/startup_card.dart';
 import '../../../catalog/domain/entities/catalog_entities.dart';
 import '../../../catalog/domain/repositories/catalog_repository.dart';
 import '../../../founder_dashboard/domain/entities/founder.dart';
-import '../../../founder_dashboard/domain/repositories/founder_repository.dart';
 
 class BookmarksPage extends StatelessWidget {
   const BookmarksPage({super.key});
@@ -83,8 +84,19 @@ class BookmarksPage extends StatelessWidget {
       final savedIds = BookmarkManager.instance.getIds(
         BookmarkManager.categoryStartups,
       );
+      for (final item in paginated.items) {
+        if (item.isSaved && !savedIds.contains(item.id)) {
+          BookmarkManager.instance.toggle(
+            BookmarkManager.categoryStartups,
+            item.id,
+          );
+        }
+      }
+      final updatedSavedIds = BookmarkManager.instance.getIds(
+        BookmarkManager.categoryStartups,
+      );
       final filtered = paginated.items
-          .where((x) => savedIds.contains(x.id))
+          .where((x) => updatedSavedIds.contains(x.id) || x.isSaved)
           .map((x) => x.copyWith(isSaved: true))
           .toList();
       return Success(
@@ -106,8 +118,19 @@ class BookmarksPage extends StatelessWidget {
       final savedIds = BookmarkManager.instance.getIds(
         BookmarkManager.categoryInvestors,
       );
+      for (final item in paginated.items) {
+        if (item.isSaved && !savedIds.contains(item.id)) {
+          BookmarkManager.instance.toggle(
+            BookmarkManager.categoryInvestors,
+            item.id,
+          );
+        }
+      }
+      final updatedSavedIds = BookmarkManager.instance.getIds(
+        BookmarkManager.categoryInvestors,
+      );
       final filtered = paginated.items
-          .where((x) => savedIds.contains(x.id))
+          .where((x) => updatedSavedIds.contains(x.id) || x.isSaved)
           .map((x) => x.copyWith(isSaved: true))
           .toList();
       return Success(
@@ -166,23 +189,93 @@ class BookmarksPage extends StatelessWidget {
   }
 
   Future<Result<Paginated<Founder>>> _fetchFounders(QueryParams params) async {
-    final res = await sl<FounderRepository>().getFounders(params);
-    return res.fold((f) => Err(f), (paginated) {
-      final savedIds = BookmarkManager.instance.getIds(
-        BookmarkManager.categoryFounders,
-      );
-      final filtered = paginated.items
-          .where((x) => savedIds.contains(x.id))
-          .toList();
-      return Success(
-        Paginated(
-          items: filtered,
-          page: paginated.page,
-          totalPages: 1,
-          totalItems: filtered.length,
-        ),
-      );
-    });
+    final api = sl<ApiClientHelper>();
+    final res = await api.getEnvelope<Paginated<Founder>>(
+      ApiEndpoints.favorites,
+      query: {'page': params.page, 'limit': 20},
+      parser: (env) {
+        final items = <Founder>[];
+        final rawItems = env.data is List
+            ? env.data as List?
+            : (env.data is Map ? env.data['items'] as List? : null);
+        if (rawItems != null) {
+          for (final raw in rawItems) {
+            if (raw is Map && raw['entityType'] == 'founder') {
+              final uuid = raw['entityId']?.toString();
+              if (uuid != null) {
+                final savedIds = BookmarkManager.instance.getIds(
+                  BookmarkManager.categoryFounders,
+                );
+                if (!savedIds.contains(uuid)) {
+                  BookmarkManager.instance.toggle(
+                    BookmarkManager.categoryFounders,
+                    uuid,
+                  );
+                }
+              }
+              final founderData =
+                  raw['details'] ?? raw['founder'] ?? raw['entity'] ?? raw;
+              if (founderData is Map) {
+                final Map<String, dynamic> fMap = Map<String, dynamic>.from(
+                  founderData,
+                );
+                fMap['id'] ??= raw['entityId'];
+
+                final profileMap = fMap['founderProfile'] as Map?;
+                String startupName = '';
+                String location = 'N/A';
+                if (profileMap != null) {
+                  startupName = profileMap['startupName']?.toString() ?? '';
+                  location =
+                      profileMap['city']?.toString() ??
+                      profileMap['location']?.toString() ??
+                      'N/A';
+                }
+
+                items.add(
+                  Founder(
+                    id: fMap['id']?.toString() ?? '',
+                    name:
+                        fMap['name'] as String? ??
+                        fMap['fullName'] as String? ??
+                        'Founder',
+                    founderType: fMap['founderType'] as String? ?? 'Founder',
+                    location:
+                        fMap['location'] as String? ??
+                        fMap['city'] as String? ??
+                        location,
+                    avatarUrl: fMap['avatarUrl'] as String?,
+                    coverUrl: fMap['coverUrl'] as String?,
+                    bio: fMap['bio'] as String? ?? '',
+                    experienceYears:
+                        (fMap['experienceYears'] as num?)?.toInt() ?? 0,
+                    skills:
+                        (fMap['skills'] as List?)
+                            ?.map((e) => e.toString())
+                            .toList() ??
+                        const [],
+                    linkedIn: fMap['linkedIn'] as String?,
+                    startupName: startupName.isNotEmpty
+                        ? startupName
+                        : (fMap['startupName'] as String? ?? ''),
+                    isVerified: fMap['isVerified'] as bool? ?? false,
+                    isFollowing: fMap['isFollowing'] as bool? ?? false,
+                    followers: (fMap['followers'] as num?)?.toInt() ?? 0,
+                  ),
+                );
+              }
+            }
+          }
+        }
+        return Paginated(
+          items: items,
+          page: params.page,
+          totalPages: env.meta?['totalPages'] as int? ?? 1,
+          totalItems: items.length,
+        );
+      },
+    );
+    return res;
   }
 
   Widget _projectsView(BuildContext context) {
@@ -481,7 +574,7 @@ class BookmarksPage extends StatelessWidget {
       case UserRole.founder:
         tabs = const [
           Tab(text: 'Investors'),
-         
+
           // Tab(text: 'Searches & Filters'),
           // Tab(text: 'Collections & Folders'),
           // Tab(text: 'Resources & Blogs'),

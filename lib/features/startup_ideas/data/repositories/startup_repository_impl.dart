@@ -88,7 +88,7 @@ class StartupRepositoryImpl implements StartupRepository {
   @override
   Future<Result<bool>> withdrawInterest(String id) async {
     if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
-    return _api.postAction(ApiEndpoints.investorCancelInvestment(id));
+    return _api.patchAction(ApiEndpoints.investorCancelInvestment(id));
   }
 
   @override

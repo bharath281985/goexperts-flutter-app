@@ -24,6 +24,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthSubscriptionActivated>(_onSubscriptionActivated);
     on<AuthUserUpdated>(_onUserUpdated);
     on<AuthLoggedOut>(_onLogout);
+    on<AuthProfileRefreshed>(_onProfileRefresh);
   }
 
   final AuthRepository _repository;
@@ -288,5 +289,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onLogout(AuthLoggedOut event, Emitter<AuthState> emit) async {
     await _repository.logout();
     emit(const AuthState(status: AuthStatus.unauthenticated));
+  }
+
+  Future<void> _onProfileRefresh(
+    AuthProfileRefreshed event,
+    Emitter<AuthState> emit,
+  ) async {
+    final result = await _repository.currentUser();
+    result.fold((_) => null, (user) => emit(state.copyWith(user: user)));
   }
 }

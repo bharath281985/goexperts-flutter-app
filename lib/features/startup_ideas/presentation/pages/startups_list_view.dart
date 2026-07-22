@@ -64,7 +64,7 @@ class StartupsListView extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _EditIdeaBottomSheet(startup: startup),
+      builder: (ctx) => EditIdeaBottomSheet(startup: startup),
     );
 
     if (data == null) return;
@@ -847,16 +847,16 @@ class _CreateIdeaBottomSheetState extends State<_CreateIdeaBottomSheet> {
   }
 }
 
-class _EditIdeaBottomSheet extends StatefulWidget {
-  const _EditIdeaBottomSheet({required this.startup});
+class EditIdeaBottomSheet extends StatefulWidget {
+  const EditIdeaBottomSheet({required this.startup});
 
   final Startup startup;
 
   @override
-  State<_EditIdeaBottomSheet> createState() => _EditIdeaBottomSheetState();
+  State<EditIdeaBottomSheet> createState() => _EditIdeaBottomSheetState();
 }
 
-class _EditIdeaBottomSheetState extends State<_EditIdeaBottomSheet> {
+class _EditIdeaBottomSheetState extends State<EditIdeaBottomSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _fundingController;
   String? _stage;

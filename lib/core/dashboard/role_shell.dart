@@ -28,6 +28,7 @@ import '../extensions/context_extensions.dart';
 import '../utils/enums.dart';
 import '../widgets/app_bottom_navigation.dart';
 import '../widgets/app_drawer.dart';
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import 'dashboard_cubit.dart';
 
 /// A single tab within a role shell.

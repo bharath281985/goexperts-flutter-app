@@ -148,6 +148,8 @@ class WalletRepositoryImpl implements WalletRepository {
         ? ApiEndpoints.clientWalletWithdraw
         : role == UserRole.founder
         ? ApiEndpoints.founderWalletWithdraw
+        : role == UserRole.investor
+        ? ApiEndpoints.investorWalletWithdraw
         : ApiEndpoints.walletWithdraw;
     return _api.postEnvelopeAcceptingHttpSuccess<String>(
       path,

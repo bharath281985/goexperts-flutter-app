@@ -7,9 +7,11 @@ import '../../../../app/locale/locale_cubit.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/theme_cubit.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/utils/enums.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_list_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../domain/repositories/settings_repository.dart';
 
 const _supportedLanguageCodes = [
@@ -123,7 +125,28 @@ class _SettingsPageState extends State<SettingsPage> {
             AppListTile(
               title: 'Edit Profile',
               leadingIcon: Icons.person_outline_rounded,
-              onTap: () => context.push(Routes.profileCompletion),
+              onTap: () async {
+                final role =
+                    context.read<AuthBloc>().state.user?.role ??
+                    UserRole.freelancer;
+                switch (role) {
+                  case UserRole.investor:
+                    await context.push(Routes.investorProfile);
+                    break;
+                  case UserRole.founder:
+                    await context.push(Routes.founderProfile);
+                    break;
+                  case UserRole.client:
+                    await context.push(Routes.clientProfile);
+                    break;
+                  case UserRole.freelancer:
+                    await context.push(Routes.profileCompletion);
+                    break;
+                }
+                if (context.mounted) {
+                  context.read<AuthBloc>().add(const AuthProfileRefreshed());
+                }
+              },
             ),
             AppListTile(
               title: 'Security Center',

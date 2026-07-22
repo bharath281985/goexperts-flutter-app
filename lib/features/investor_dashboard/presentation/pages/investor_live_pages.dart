@@ -121,7 +121,6 @@ class _InvestorProfilePageState extends State<InvestorProfilePage> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-
     final fullName = _fullName.text.trim();
 
     setState(() => _saving = true);

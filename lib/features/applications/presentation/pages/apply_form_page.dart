@@ -13,6 +13,7 @@ import '../../../../core/widgets/app_secondary_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/network/api_client_helper.dart';
 import '../../../../core/network/api_endpoints.dart';
+import '../../../../core/network/file_upload_helper.dart';
 import '../../../projects/domain/repositories/project_repository.dart';
 import '../../../startup_ideas/domain/repositories/startup_repository.dart';
 import '../../../proposals/domain/repositories/proposal_repository.dart';
@@ -49,6 +50,7 @@ class _ApplyFormPageState extends State<ApplyFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _coverLetter = TextEditingController();
   final _budget = TextEditingController();
+  final _equity = TextEditingController();
   final _customTimeline = TextEditingController();
   String _timeline = '1-2 weeks';
   String? _resume;
@@ -92,6 +94,7 @@ class _ApplyFormPageState extends State<ApplyFormPage> {
   void dispose() {
     _coverLetter.dispose();
     _budget.dispose();
+    _equity.dispose();
     _customTimeline.dispose();
     super.dispose();
   }
@@ -186,20 +189,46 @@ class _ApplyFormPageState extends State<ApplyFormPage> {
         (failure) => context.showSnack(failure.message, isError: true),
         (_) {
           context.showSnack('Proposal sent to client for review!');
-          Navigator.of(context).maybePop();
+          Navigator.of(context).maybePop(true);
         },
       );
       return;
     }
 
     if (_isInvestment && widget.projectId != null) {
+      String? uploadedUrl;
+      if (_portfolioPath != null) {
+        final uploadRes = await sl<FileUploadHelper>().uploadUrl(
+          path: _portfolioPath!,
+          endpoint: ApiEndpoints.filesUpload,
+        );
+        uploadRes.fold(
+          (failure) {
+            context.showSnack(
+              'Portfolio upload failed: ${failure.message}',
+              isError: true,
+            );
+          },
+          (url) {
+            uploadedUrl = url;
+          },
+        );
+        if (uploadedUrl == null) {
+          setState(() => _submitting = false);
+          return;
+        }
+      }
+
       final api = sl<ApiClientHelper>();
       final result = await api.postAction(
         ApiEndpoints.investorExpressInterest,
         body: {
           'startupId': widget.projectId,
           'amount': double.tryParse(_budget.text.trim()) ?? 0.0,
+          'equity': double.tryParse(_equity.text.trim()) ?? 0.0,
           'message': _coverLetter.text.trim(),
+          if (uploadedUrl != null) 'portfolioUrl': uploadedUrl,
+          if (uploadedUrl != null) 'portfolio': uploadedUrl,
         },
       );
       if (!mounted) return;
@@ -208,7 +237,7 @@ class _ApplyFormPageState extends State<ApplyFormPage> {
         (failure) => context.showSnack(failure.message, isError: true),
         (_) {
           context.showSnack('Investment application submitted successfully!');
-          Navigator.of(context).maybePop();
+          Navigator.of(context).maybePop(true);
         },
       );
       return;
@@ -218,7 +247,7 @@ class _ApplyFormPageState extends State<ApplyFormPage> {
     if (!mounted) return;
     setState(() => _submitting = false);
     context.showSnack('${widget.type} application submitted!');
-    Navigator.of(context).maybePop();
+    Navigator.of(context).maybePop(true);
   }
 
   int get _deliveryDays {
@@ -362,6 +391,28 @@ class _ApplyFormPageState extends State<ApplyFormPage> {
                 keyboardType: TextInputType.number,
                 prefixIcon: Icons.currency_rupee_rounded,
               ),
+              if (_isInvestment) ...[
+                AppSizes.vGapLg,
+                AppTextField(
+                  controller: _equity,
+                  label: 'Equity (%)',
+                  hint: '5.0',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  prefixIcon: Icons.percent_rounded,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Please enter equity percentage';
+                    }
+                    final parsed = double.tryParse(v.trim());
+                    if (parsed == null || parsed <= 0 || parsed > 100) {
+                      return 'Please enter a valid equity percentage between 0 and 100';
+                    }
+                    return null;
+                  },
+                ),
+              ],
               if (!_isInvestment) ...[
                 AppSizes.vGapLg,
                 AppDropdown<String>(
@@ -387,16 +438,18 @@ class _ApplyFormPageState extends State<ApplyFormPage> {
                 ],
               ],
               if (!_isEdit) ...[
-                AppSizes.vGapLg,
-                AppFileUpload(
-                  label: 'Attach resume / profile',
-                  hint: 'PDF · up to 10MB',
-                  fileName: _resume,
-                  onTap: () => _pickFile(
-                    portfolio: false,
-                    allowedExtensions: const ['pdf', 'doc', 'docx'],
+                if (!_isInvestment) ...[
+                  AppSizes.vGapLg,
+                  AppFileUpload(
+                    label: 'Attach resume / profile',
+                    hint: 'PDF · up to 10MB',
+                    fileName: _resume,
+                    onTap: () => _pickFile(
+                      portfolio: false,
+                      allowedExtensions: const ['pdf', 'doc', 'docx'],
+                    ),
                   ),
-                ),
+                ],
                 AppSizes.vGapLg,
                 AppFileUpload(
                   label: 'Attach portfolio (optional)',
@@ -441,7 +494,7 @@ class _ApplyFormPageState extends State<ApplyFormPage> {
                     );
                   },
                 ),
-              ] else ...[
+              ] else if (!_isInvestment) ...[
                 AppSizes.vGapMd,
                 AppSecondaryButton(
                   label: 'Withdraw',
