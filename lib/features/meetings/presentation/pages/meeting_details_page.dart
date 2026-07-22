@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/services.dart';
 import '../../../../app/constants/app_colors.dart';
 import '../../../../app/constants/app_sizes.dart';
 import '../../../../app/dependency_injection/service_locator.dart';
@@ -31,7 +29,6 @@ class MeetingDetailsPage extends StatefulWidget {
 
 class _MeetingDetailsPageState extends State<MeetingDetailsPage> {
   late Future<Result<Meeting>> _future;
-  Meeting? _localMeeting;
 
   @override
   void initState() {
@@ -41,15 +38,6 @@ class _MeetingDetailsPageState extends State<MeetingDetailsPage> {
 
   void _load() {
     _future = sl<MeetingRepository>().getMeeting(widget.id);
-    _future.then((result) {
-      result.fold((_) {}, (meeting) {
-        if (mounted) {
-          setState(() {
-            _localMeeting = meeting;
-          });
-        }
-      });
-    });
   }
 
   Future<void> _reschedule(Meeting meeting) async {
@@ -81,34 +69,8 @@ class _MeetingDetailsPageState extends State<MeetingDetailsPage> {
     );
     if (!mounted) return;
 
-    res.fold((fail) => context.showSnack(fail.message, isError: true), (
-      _,
-    ) async {
+    res.fold((fail) => context.showSnack(fail.message, isError: true), (_) {
       context.showSnack('Meeting rescheduled successfully!');
-
-      // Update local memory instantly
-      if (_localMeeting != null) {
-        setState(() {
-          _localMeeting = Meeting(
-            id: _localMeeting!.id,
-            title: _localMeeting!.title,
-            withName: _localMeeting!.withName,
-            withAvatar: _localMeeting!.withAvatar,
-            startTime: newStartTime,
-            durationMinutes: _localMeeting!.durationMinutes,
-            status: EntityStatus.rescheduled,
-            isVideo: _localMeeting!.isVideo,
-            meetingLink: _localMeeting!.meetingLink,
-            agenda: _localMeeting!.agenda,
-            participants: _localMeeting!.participants,
-          );
-        });
-      }
-
-      // Brief delay to allow database consistency
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (!mounted) return;
-
       setState(() {
         _load();
       });
@@ -151,14 +113,14 @@ class _MeetingDetailsPageState extends State<MeetingDetailsPage> {
     return FutureBuilder<Result<Meeting>>(
       future: _future,
       builder: (context, snapshot) {
-        final meeting = _localMeeting ?? snapshot.data?.valueOrNull;
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Meeting Details')),
+            body: const AppLoadingShimmer(itemCount: 4, height: 110),
+          );
+        }
+        final meeting = snapshot.data?.valueOrNull;
         if (meeting == null) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Scaffold(
-              appBar: AppBar(title: const Text('Meeting Details')),
-              body: const AppLoadingShimmer(itemCount: 4, height: 110),
-            );
-          }
           return Scaffold(
             appBar: AppBar(title: const Text('Meeting Details')),
             body: const AppErrorState(),
@@ -208,18 +170,7 @@ class _MeetingDetailsPageState extends State<MeetingDetailsPage> {
                       icon: Icons.videocam_rounded,
                       onPressed: meeting.status == EntityStatus.cancelled
                           ? null
-                          : () async {
-                              final link = meeting.meetingLink.isNotEmpty
-                                  ? meeting.meetingLink
-                                  : 'https://meet.google.com';
-                              final uri = Uri.tryParse(link);
-                              if (uri != null) {
-                                await launchUrl(
-                                  uri,
-                                  mode: LaunchMode.externalApplication,
-                                );
-                              }
-                            },
+                          : () => context.showSnack('Joining… (WebRTC ready)'),
                     ),
                   ),
                 ],
@@ -288,24 +239,14 @@ class _MeetingDetailsPageState extends State<MeetingDetailsPage> {
         ),
         AppSizes.vGapLg,
         AppCard(
-          onTap: () async {
-            final link = m.meetingLink.isNotEmpty
-                ? m.meetingLink
-                : 'https://meet.google.com';
-            final uri = Uri.tryParse(link);
-            if (uri != null) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            }
-          },
+          onTap: () => context.showSnack('Opening meeting room…'),
           child: Row(
             children: [
               const Icon(Icons.link_rounded, color: AppColors.info),
               AppSizes.hGapMd,
               Expanded(
                 child: Text(
-                  m.meetingLink.isNotEmpty
-                      ? m.meetingLink
-                      : 'https://meet.google.com',
+                  m.meetingLink,
                   style: context.text.bodySmall,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -313,13 +254,7 @@ class _MeetingDetailsPageState extends State<MeetingDetailsPage> {
               ),
               IconButton(
                 icon: const Icon(Icons.copy_rounded, size: 18),
-                onPressed: () {
-                  final link = m.meetingLink.isNotEmpty
-                      ? m.meetingLink
-                      : 'https://meet.google.com';
-                  Clipboard.setData(ClipboardData(text: link));
-                  context.showSnack('Link copied');
-                },
+                onPressed: () => context.showSnack('Link copied'),
               ),
             ],
           ),

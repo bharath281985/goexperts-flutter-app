@@ -41,7 +41,6 @@ class ApiEndpoints {
   static String notificationDelete(String id) => '/notifications/$id';
   static const wallet = '/wallet';
   static const walletTransactions = '/wallet/transactions';
-  static const walletWithdraw = '/wallet/withdraw';
   static const subscriptionPlans = '/subscriptions/plans';
   static const subscriptionCurrent = '/subscriptions/current';
   static const invoices = '/invoices';
@@ -187,7 +186,6 @@ class ApiEndpoints {
   static const freelancerSearchProjects = '/freelancer/search/projects';
   static const freelancerSearchClients = '/freelancer/search/clients';
   static const freelancerSearchSkills = '/freelancer/search/skills';
-  static const freelancerAnalytics = '/freelancer/analytics';
 
   // ── Client ────────────────────────────────────────────────────────────────
   static const clientDashboard = '/client/dashboard';
@@ -273,7 +271,6 @@ class ApiEndpoints {
   static const investorOffer = '/investor/investments/offer';
   static String investorInvestmentStatus(String id) =>
       '/investor/investments/$id/status';
-  static const investorInvestmentHistory = '/investor/investments/history';
   static const investorPortfolio = '/investor/portfolio';
   static String investorPortfolioItem(String id) => '/investor/portfolio/$id';
   static const investorPortfolioPerformance = '/investor/portfolio/performance';
@@ -345,6 +342,7 @@ class ApiEndpoints {
   static const conversations = '/conversations';
   static const meetings = '/meetings';
   static const investorWalletWithdraw = '/investor/wallet/withdraw';
+  static const walletWithdraw = '/wallet/withdraw';
   static const transactions = '/wallet/transactions';
   static const subscriptions = '/subscriptions';
   static const bookmarks = '/favorites';

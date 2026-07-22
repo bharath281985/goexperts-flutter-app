@@ -86,10 +86,6 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                         res.fold(
                           (f) => context.showSnack(f.message, isError: true),
                           (success) {
-                            BookmarkManager.instance.toggle(
-                              BookmarkManager.categoryStartups,
-                              widget.id,
-                            );
                             context.showSnack(
                               !isSaved ? 'Saved startup' : 'Removed from saved',
                             );
@@ -111,6 +107,7 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                           label: 'Message',
                           icon: Icons.chat_bubble_outline_rounded,
                           onPressed: () {
+                            print("founderId: ${s.founderId}");
                             if (s.founderId != null &&
                                 s.founderId!.isNotEmpty) {
                               final nameEncoded = Uri.encodeComponent(
@@ -209,7 +206,6 @@ class _StartupDetailsPageState extends State<StartupDetailsPage> {
                               );
                               if (mounted) {
                                 setState(() {
-                                  _hasInvestedOverride = null;
                                   _future = sl<StartupRepository>().getStartup(
                                     widget.id,
                                   );

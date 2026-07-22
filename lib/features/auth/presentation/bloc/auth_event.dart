@@ -11,7 +11,10 @@ class AuthCheckRequested extends AuthEvent {
 }
 
 class AuthLoginRequested extends AuthEvent {
-  const AuthLoginRequested({required this.email, required this.password});
+  const AuthLoginRequested({
+    required this.email,
+    required this.password,
+  });
   final String email;
   final String password;
   @override
@@ -80,9 +83,4 @@ class AuthUserUpdated extends AuthEvent {
 
 class AuthLoggedOut extends AuthEvent {
   const AuthLoggedOut();
-}
-
-/// Refreshes the user profile from the remote API in the background.
-class AuthProfileRefreshed extends AuthEvent {
-  const AuthProfileRefreshed();
 }

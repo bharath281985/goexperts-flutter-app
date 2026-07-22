@@ -44,8 +44,6 @@ class AppStatusChip extends StatelessWidget {
         return AppColors.danger;
       case EntityStatus.draft:
         return AppColors.mutedText;
-      case EntityStatus.rescheduled:
-        return AppColors.info;
     }
   }
 

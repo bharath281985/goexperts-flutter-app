@@ -348,11 +348,6 @@ class DashboardCubit extends Cubit<DashboardState> {
             }).toList();
           }
 
-          // final chart =
-          //     (data['charts']?['pipeline'] as List?)
-          //         ?.map((e) => (e as num?)?.toDouble() ?? 0)
-          //         .toList() ??
-          //     const <double>[];
           next = next.copyWith(
             monthlyEarnings: portfolioValue,
             activeProjectsCount: activeDeals,
@@ -428,10 +423,7 @@ class DashboardCubit extends Cubit<DashboardState> {
           0,
           (total, conversation) => total + conversation.unreadCount,
         );
-        final finalUnread = unreadMessages > next.unreadMessagesCount
-            ? unreadMessages
-            : next.unreadMessagesCount;
-        next = next.copyWith(unreadMessagesCount: finalUnread);
+        next = next.copyWith(unreadMessagesCount: unreadMessages);
       });
 
       emit(next);

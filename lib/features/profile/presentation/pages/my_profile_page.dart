@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/constants/app_colors.dart';
 import '../../../../app/constants/app_sizes.dart';
-import '../../../../core/dashboard/analytics_page.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/utils/enums.dart';
@@ -34,7 +33,6 @@ class _MyProfilePageState extends State<MyProfilePage> {
   void initState() {
     super.initState();
     _fetchAverage();
-    context.read<AuthBloc>().add(const AuthProfileRefreshed());
   }
 
   Future<void> _fetchAverage() async {
@@ -185,23 +183,20 @@ class _MyProfilePageState extends State<MyProfilePage> {
               ),
               AppSizes.vGapLg,
               _group(context, 'Profile', [
-                _tile(context, Icons.edit_outlined, 'Edit Profile', () async {
+                _tile(context, Icons.edit_outlined, 'Edit Profile', () {
                   switch (role) {
                     case UserRole.investor:
-                      await context.push(Routes.investorProfile);
+                      context.push(Routes.investorProfile);
                       break;
                     case UserRole.founder:
-                      await context.push(Routes.founderProfile);
+                      context.push(Routes.founderProfile);
                       break;
                     case UserRole.client:
-                      await context.push(Routes.clientProfile);
+                      context.push(Routes.clientProfile);
                       break;
                     case UserRole.freelancer:
-                      context.push(Routes.freelancerProfile);
+                      context.push(Routes.profileCompletion);
                       break;
-                  }
-                  if (context.mounted) {
-                    context.read<AuthBloc>().add(const AuthProfileRefreshed());
                   }
                 }),
                 _tile(
@@ -230,27 +225,12 @@ class _MyProfilePageState extends State<MyProfilePage> {
                     MaterialPageRoute(builder: (_) => const MyReviewsPage()),
                   ),
                 ),
-                _tile(context, Icons.insights_outlined, 'Analytics', () {
-                  switch (role) {
-                    case UserRole.investor:
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              const RoleAnalyticsPage(role: UserRole.investor),
-                        ),
-                      );
-                      break;
-                    case UserRole.founder:
-                      context.push(Routes.founderAnalytics);
-                      break;
-                    case UserRole.client:
-                      context.push(Routes.clientAnalytics);
-                      break;
-                    case UserRole.freelancer:
-                      context.push(Routes.freelancerAnalytics);
-                      break;
-                  }
-                }),
+                _tile(
+                  context,
+                  Icons.insights_outlined,
+                  'Analytics',
+                  () => context.push(Routes.freelancerAnalytics),
+                ),
               ]),
               AppSizes.vGapLg,
               _group(context, 'Account', [

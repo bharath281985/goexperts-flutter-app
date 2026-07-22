@@ -31,9 +31,7 @@ class AppNotificationTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
       child: Container(
         padding: const EdgeInsets.all(AppSizes.md),
-        color: isRead
-            ? Colors.transparent
-            : AppColors.primary.withValues(alpha: 0.04),
+        color: isRead ? Colors.transparent : AppColors.primary.withValues(alpha: 0.04),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -54,11 +52,9 @@ class AppNotificationTile extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          context.tr(title),
+                          title,
                           style: context.text.titleSmall?.copyWith(
-                            fontWeight: isRead
-                                ? FontWeight.w500
-                                : FontWeight.w700,
+                            fontWeight: isRead ? FontWeight.w500 : FontWeight.w700,
                           ),
                         ),
                       ),
@@ -74,12 +70,7 @@ class AppNotificationTile extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    context.tr(body),
-                    style: context.text.bodySmall,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(body, style: context.text.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   Text(time, style: context.text.labelSmall),
                 ],

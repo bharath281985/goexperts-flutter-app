@@ -52,19 +52,11 @@ enum UserRole {
   List<String> get benefits {
     switch (this) {
       case UserRole.freelancer:
-        return [
-          'Verified projects',
-          'Secure escrow payments',
-          'AI job matching',
-        ];
+        return ['Verified projects', 'Secure escrow payments', 'AI job matching'];
       case UserRole.client:
         return ['Vetted freelancers', 'Milestone contracts', 'Team management'];
       case UserRole.investor:
-        return [
-          'Curated deal flow',
-          'Secure deal rooms',
-          'Portfolio analytics',
-        ];
+        return ['Curated deal flow', 'Secure deal rooms', 'Portfolio analytics'];
       case UserRole.founder:
         return ['Investor network', 'Pitch deck hosting', 'Funding pipeline'];
     }
@@ -92,15 +84,7 @@ enum UserRole {
 }
 
 /// Generic lifecycle status for BLoC-driven screens.
-enum ViewStatus {
-  initial,
-  loading,
-  refreshing,
-  loadingMore,
-  success,
-  empty,
-  failure,
-}
+enum ViewStatus { initial, loading, refreshing, loadingMore, success, empty, failure }
 
 /// Common domain status used by projects, proposals, deals, etc.
 enum EntityStatus {
@@ -117,8 +101,7 @@ enum EntityStatus {
   completed,
   cancelled,
   expired,
-  withdrawn,
-  rescheduled;
+  withdrawn;
 
   String get label {
     switch (this) {
@@ -150,8 +133,6 @@ enum EntityStatus {
         return 'Expired';
       case EntityStatus.withdrawn:
         return 'Withdrawn';
-      case EntityStatus.rescheduled:
-        return 'Rescheduled';
     }
   }
 

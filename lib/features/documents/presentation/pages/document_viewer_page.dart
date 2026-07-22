@@ -1,212 +1,145 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../app/constants/app_colors.dart';
 import '../../../../app/constants/app_sizes.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_scaffold.dart';
-import '../../../../core/widgets/app_primary_button.dart';
-import '../../../../core/widgets/share_sheet.dart';
 
-/// A reusable document viewer shell that opens files in native handlers list/browser
-/// and provides download + sharing actions.
-class DocumentViewerPage extends StatefulWidget {
-  const DocumentViewerPage({
-    super.key,
-    required this.type,
-    this.name,
-    this.url,
-  });
+/// A reusable document viewer shell with type-aware preview placeholders.
+///
+/// Supports PDF, DOCX, Excel, PowerPoint, Image, Video, Audio and ZIP.
+/// Swap the preview area for real renderers (e.g. `syncfusion_flutter_pdfviewer`,
+/// `video_player`, `just_audio`) when wiring live files.
+class DocumentViewerPage extends StatelessWidget {
+  const DocumentViewerPage({super.key, required this.type, this.name, this.url});
 
   final String type;
   final String? name;
   final String? url;
 
   @override
-  State<DocumentViewerPage> createState() => _DocumentViewerPageState();
-}
-
-class _DocumentViewerPageState extends State<DocumentViewerPage> {
-  bool _isAutoAttempted = false;
-
-  String? get _resolvedUrl {
-    if (widget.url == null || widget.url!.isEmpty) return null;
-    var displayUrl = widget.url!;
-    if (displayUrl.contains('localhost:4000')) {
-      displayUrl = displayUrl
-          .replaceAll('http://localhost:4000', 'https://mobileapi.goexperts.in')
-          .replaceAll('localhost:4000', 'mobileapi.goexperts.in');
-    }
-    return (displayUrl.startsWith('http://') ||
-            displayUrl.startsWith('https://') ||
-            displayUrl.startsWith('data:'))
-        ? displayUrl
-        : 'https://mobileapi.goexperts.in${displayUrl.startsWith('/') ? '' : '/'}$displayUrl';
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _autoOpen();
-    });
-  }
-
-  Future<void> _autoOpen() async {
-    if (_isAutoAttempted) return;
-    _isAutoAttempted = true;
-
-    // Give context transitions a brief moment to settle down
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-
-    final target = _resolvedUrl;
-    if (target != null && target.isNotEmpty) {
-      context.showSnack('Opening document...');
-      await _openDocument();
-    }
-  }
-
-  Future<void> _openDocument() async {
-    final targetUrl = _resolvedUrl;
-    if (targetUrl == null || targetUrl.isEmpty) {
-      context.showSnack('Invalid document URL', isError: true);
-      return;
-    }
-    try {
-      final uri = Uri.parse(targetUrl);
-      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!ok) {
-        if (mounted) {
-          context.showSnack(
-            'Could not open document externally. Please try downloading or opening in browser.',
-            isError: true,
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        context.showSnack('Error opening document: $e', isError: true);
-      }
-    }
-  }
-
-  Future<void> _shareDocument() async {
-    final targetUrl = _resolvedUrl;
-    if (targetUrl == null || targetUrl.isEmpty) {
-      context.showSnack('No document to share', isError: true);
-      return;
-    }
-    ShareSheet.show(
-      context,
-      title: widget.name ?? 'Document',
-      link: targetUrl,
-      subtitle: '${widget.type} file details',
+  Widget build(BuildContext context) {
+    final meta = _metaFor(type);
+    return AppScaffold(
+      appBar: AppBar(
+        title: Text(name ?? '$type Viewer'),
+        actions: [
+          IconButton(onPressed: () => context.showSnack('Downloading…'), icon: const Icon(Icons.download_rounded)),
+          IconButton(onPressed: () => context.showSnack('Sharing…'), icon: const Icon(Icons.share_outlined)),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(child: _preview(context, meta)),
+          _toolbar(context, meta),
+        ],
+      ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final meta = _metaFor(widget.type);
-    final targetUrl = _resolvedUrl;
-
-    return AppScaffold(
-      appBar: AppBar(
-        title: Text(widget.name ?? '${widget.type} Viewer'),
-        actions: [
-          IconButton(
-            onPressed: () {
-              if (targetUrl != null) {
-                _openDocument();
-              } else {
-                context.showSnack('Download unavailable', isError: true);
-              }
-            },
-            icon: const Icon(Icons.download_rounded),
-          ),
-          IconButton(
-            onPressed: _shareDocument,
-            icon: const Icon(Icons.share_outlined),
-          ),
-        ],
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              context.theme.scaffoldBackgroundColor,
-              context.theme.cardColor,
+  Widget _preview(BuildContext context, _DocMeta meta) {
+    switch (meta.kind) {
+      case _DocKind.image:
+        return Container(
+          color: Colors.black,
+          alignment: Alignment.center,
+          child: const Icon(Icons.image_outlined, size: 96, color: Colors.white54),
+        );
+      case _DocKind.video:
+        return Container(
+          color: Colors.black,
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.play_circle_outline_rounded, size: 88, color: Colors.white),
+              SizedBox(height: 8),
+              Text('Tap to play', style: TextStyle(color: Colors.white70)),
             ],
           ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: AppSizes.xl),
-        child: Center(
+        );
+      case _DocKind.audio:
+        return Center(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 padding: const EdgeInsets.all(AppSizes.xxl),
-                decoration: BoxDecoration(
-                  color: meta.color.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: meta.color.withValues(alpha: 0.15),
-                    width: 2,
-                  ),
-                ),
-                child: Icon(meta.icon, size: 72, color: meta.color),
+                decoration: BoxDecoration(color: meta.color.withValues(alpha: 0.12), shape: BoxShape.circle),
+                child: Icon(Icons.graphic_eq_rounded, size: 64, color: meta.color),
               ),
               AppSizes.vGapLg,
-              Text(
-                widget.name ?? 'Document File',
-                style: context.text.titleLarge,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              AppSizes.vGapXs,
-              Text(
-                'Type: ${widget.type.toUpperCase()}',
-                style: context.text.bodyMedium?.copyWith(
-                  color: AppColors.mutedText,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              AppSizes.vGapXxl,
-              if (targetUrl == null || targetUrl.isEmpty) ...[
-                const Icon(
-                  Icons.warning_amber_rounded,
-                  color: AppColors.warning,
-                  size: 28,
-                ),
-                AppSizes.vGapSm,
-                Text(
-                  'No link/URL was provided for this document.',
-                  style: context.text.bodyMedium,
-                  textAlign: TextAlign.center,
-                ),
-              ] else ...[
-                AppPrimaryButton(
-                  label: 'View Document',
-                  icon: Icons.open_in_new_rounded,
-                  onPressed: _openDocument,
-                ),
-                AppSizes.vGapLg,
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
-                  child: Text(
-                    'The document will open in your device\'s default viewer or web browser. You can also download or share it using the top right actions.',
-                    style: context.text.labelMedium?.copyWith(
-                      color: AppColors.mutedText,
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
+              Text(name ?? 'audio.mp3', style: context.text.titleMedium),
             ],
           ),
+        );
+      case _DocKind.pages:
+        return ListView.separated(
+          padding: const EdgeInsets.all(AppSizes.lg),
+          itemCount: 4,
+          separatorBuilder: (_, __) => AppSizes.vGapLg,
+          itemBuilder: (_, i) => AspectRatio(
+            aspectRatio: 1 / 1.3,
+            child: Container(
+              decoration: BoxDecoration(
+                color: context.theme.cardColor,
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                border: Border.all(color: context.theme.dividerColor),
+              ),
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(meta.icon, size: 48, color: meta.color),
+                  AppSizes.vGapSm,
+                  Text('Page ${i + 1}', style: context.text.bodySmall),
+                ],
+              ),
+            ),
+          ),
+        );
+      case _DocKind.archive:
+        return ListView(
+          padding: const EdgeInsets.all(AppSizes.lg),
+          children: [
+            Text('Archive contents', style: context.text.titleMedium),
+            AppSizes.vGapMd,
+            for (final f in ['README.md', 'assets/logo.png', 'src/main.dart', 'docs/spec.pdf'])
+              ListTile(
+                leading: const Icon(Icons.insert_drive_file_outlined),
+                title: Text(f),
+                trailing: const Icon(Icons.download_rounded, size: 18),
+                onTap: () => context.showSnack('Extracting $f'),
+              ),
+          ],
+        );
+    }
+  }
+
+  Widget _toolbar(BuildContext context, _DocMeta meta) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSizes.lg, vertical: AppSizes.md),
+        decoration: BoxDecoration(
+          color: context.theme.cardColor,
+          border: Border(top: BorderSide(color: context.theme.dividerColor)),
+        ),
+        child: Row(
+          children: [
+            Icon(meta.icon, color: meta.color),
+            AppSizes.hGapMd,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name ?? '$type document', style: context.text.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text('$type · preview', style: context.text.labelSmall),
+                ],
+              ),
+            ),
+            IconButton(onPressed: () => context.showSnack('Zoom'), icon: const Icon(Icons.zoom_in_rounded)),
+            IconButton(onPressed: () => context.showSnack('Open externally'), icon: const Icon(Icons.open_in_new_rounded)),
+          ],
         ),
       ),
     );
@@ -215,42 +148,41 @@ class _DocumentViewerPageState extends State<DocumentViewerPage> {
   _DocMeta _metaFor(String type) {
     switch (type.toLowerCase()) {
       case 'pdf':
-        return const _DocMeta(Icons.picture_as_pdf_outlined, AppColors.danger);
+        return const _DocMeta(_DocKind.pages, Icons.picture_as_pdf_outlined, AppColors.danger);
       case 'docx':
       case 'doc':
-        return const _DocMeta(Icons.description_outlined, AppColors.info);
+        return const _DocMeta(_DocKind.pages, Icons.description_outlined, AppColors.info);
       case 'excel':
       case 'xlsx':
-        return const _DocMeta(Icons.table_chart_outlined, AppColors.success);
+        return const _DocMeta(_DocKind.pages, Icons.table_chart_outlined, AppColors.success);
       case 'powerpoint':
       case 'ppt':
       case 'pptx':
-        return const _DocMeta(Icons.slideshow_outlined, AppColors.warning);
+        return const _DocMeta(_DocKind.pages, Icons.slideshow_outlined, AppColors.warning);
       case 'image':
       case 'png':
       case 'jpg':
-      case 'jpeg':
-        return const _DocMeta(Icons.image_outlined, AppColors.info);
+        return const _DocMeta(_DocKind.image, Icons.image_outlined, AppColors.info);
       case 'video':
       case 'mp4':
-        return const _DocMeta(Icons.movie_outlined, AppColors.primary);
+        return const _DocMeta(_DocKind.video, Icons.movie_outlined, AppColors.primary);
       case 'audio':
       case 'mp3':
-        return const _DocMeta(Icons.audiotrack_outlined, AppColors.primary);
+        return const _DocMeta(_DocKind.audio, Icons.audiotrack_outlined, AppColors.primary);
       case 'zip':
       case 'archive':
-        return const _DocMeta(Icons.folder_zip_outlined, AppColors.mutedText);
+        return const _DocMeta(_DocKind.archive, Icons.folder_zip_outlined, AppColors.mutedText);
       default:
-        return const _DocMeta(
-          Icons.insert_drive_file_outlined,
-          AppColors.mutedText,
-        );
+        return const _DocMeta(_DocKind.pages, Icons.insert_drive_file_outlined, AppColors.mutedText);
     }
   }
 }
 
+enum _DocKind { pages, image, video, audio, archive }
+
 class _DocMeta {
-  const _DocMeta(this.icon, this.color);
+  const _DocMeta(this.kind, this.icon, this.color);
+  final _DocKind kind;
   final IconData icon;
   final Color color;
 }

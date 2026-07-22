@@ -128,21 +128,9 @@ class _CatalogBodyState<T> extends State<_CatalogBody<T>> {
   Future<void> _openFilters() async {
     if (widget.filterSections == null) return;
     final bloc = context.read<ListBloc<T>>();
-    final sections = widget.filterSections!();
-    final activeFilters = bloc.state.query.filters;
-
-    for (final section in sections) {
-      final active = activeFilters[section.key];
-      if (active is Iterable) {
-        section.selected = active.map((e) => e.toString()).toSet();
-      } else if (active != null) {
-        section.selected = {active.toString()};
-      }
-    }
-
     final result = await AppFilterBottomSheet.show(
       context,
-      sections: sections,
+      sections: widget.filterSections!(),
       sortOptions: widget.sortOptions,
       selectedSort: bloc.state.query.sortBy,
     );
