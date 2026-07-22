@@ -83,11 +83,10 @@ class MessagesStandalonePage extends StatelessWidget {
 }
 
 class MyStartupStandalonePage extends StatelessWidget {
-  const MyStartupStandalonePage({super.key, this.startupId});
-  final String? startupId;
+  const MyStartupStandalonePage({super.key});
   @override
   Widget build(BuildContext context) =>
-      _wrap('My Startup', MyStartupView(id: startupId));
+      _wrap('My Startup', const MyStartupView());
 }
 
 class FundingStandalonePage extends StatelessWidget {

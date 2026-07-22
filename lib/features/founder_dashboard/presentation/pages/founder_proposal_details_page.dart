@@ -165,8 +165,7 @@ class _FounderProposalDetailsPageState
     final investorAvatar =
         _proposal!['investorAvatar']?.toString() ??
         _proposal!['investorProfile']?['avatarUrl']?.toString();
-    final investorBio =
-        _proposal!['investorProfile']?['bio']?.toString() ?? 'Angel Investor';
+    final investorBio = _proposal!['investorProfile']?['bio']?.toString() ?? '';
 
     final offer =
         (num.tryParse(_proposal!['offer']?.toString() ?? '')?.toDouble()) ??
@@ -178,109 +177,51 @@ class _FounderProposalDetailsPageState
     final message =
         _proposal!['message']?.toString() ??
         _proposal!['coverLetter']?.toString() ??
-        _proposal!['docs']?.toString() ??
-        _proposal!['description']?.toString() ??
         'No message provided.';
     final statusString = _proposal!['status']?.toString() ?? 'pending';
     final status = EntityStatus.fromString(statusString);
-    final dateString = _proposal!['createdAt']?.toString() ?? '';
-    final formattedDate = dateString.isNotEmpty
-        ? Formatters.date(DateTime.tryParse(dateString) ?? DateTime.now())
-        : 'Recently';
 
     return SafeArea(
       top: false,
       bottom: false,
       child: ListView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSizes.screenPadding,
-          vertical: AppSizes.lg,
-        ),
+        padding: const EdgeInsets.all(AppSizes.screenPadding),
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Investment Proposal',
-                    style: context.text.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 22,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Received $formattedDate',
-                    style: context.text.labelMedium?.copyWith(
-                      color: AppColors.mutedText,
-                    ),
-                  ),
-                ],
+              Expanded(
+                child: Text(
+                  'Investment Proposal',
+                  style: context.text.headlineSmall,
+                ),
               ),
-              AppStatusChip.status(status, dense: false),
+              AppStatusChip.status(status, dense: true),
             ],
           ),
           AppSizes.vGapLg,
-          Text(
-            'Investor Profile',
-            style: context.text.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          AppSizes.vGapSm,
           AppCard(
-            padding: const EdgeInsets.all(AppSizes.lg),
             child: Row(
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      width: 3,
-                    ),
-                  ),
-                  child: AppAvatar(
-                    name: investorName,
-                    imageUrl: investorAvatar,
-                    size: 58,
-                  ),
+                AppAvatar(
+                  name: investorName,
+                  imageUrl: investorAvatar,
+                  size: 48,
                 ),
-                AppSizes.hGapLg,
+                AppSizes.hGapMd,
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              investorName,
-                              style: context.text.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          AppSizes.hGapXs,
-                          const Icon(
-                            Icons.verified_rounded,
-                            size: 16,
-                            color: AppColors.primary,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        investorBio,
-                        style: context.text.labelMedium?.copyWith(
-                          color: AppColors.mutedText,
+                      Text(investorName, style: context.text.titleMedium),
+                      if (investorBio.isNotEmpty) ...[
+                        AppSizes.vGapXs,
+                        Text(
+                          investorBio,
+                          style: context.text.bodySmall,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -288,78 +229,32 @@ class _FounderProposalDetailsPageState
             ),
           ),
           AppSizes.vGapLg,
-          Text(
-            'Financial Terms',
-            style: context.text.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          AppSizes.vGapSm,
           Row(
             children: [
               Expanded(
-                child: _buildTermCard(
+                child: _buildStatCard(
                   Icons.payments_outlined,
-                  'Offered Funding',
+                  'Funding Bid',
                   Formatters.compactCurrency(offer),
-                  AppColors.success,
                 ),
               ),
               const SizedBox(width: AppSizes.md),
               Expanded(
-                child: _buildTermCard(
+                child: _buildStatCard(
                   Icons.pie_chart_outline_rounded,
-                  'Requested Equity',
+                  'Equity Asked',
                   '${equity.toStringAsFixed(1)}%',
-                  AppColors.warning,
                 ),
               ),
             ],
           ),
           AppSizes.vGapLg,
-          Text(
-            'Investor Cover Note',
-            style: context.text.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+          const Text(
+            'Investor Note',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           AppSizes.vGapSm,
-          Container(
-            padding: const EdgeInsets.all(AppSizes.lg),
-            decoration: BoxDecoration(
-              color: context.theme.cardColor,
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              border: Border.all(
-                color: context.theme.dividerColor.withValues(alpha: 0.6),
-              ),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Icon(
-                    Icons.format_quote_rounded,
-                    size: 36,
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0, right: 28.0),
-                  child: Text(
-                    message,
-                    style: context.text.bodyMedium?.copyWith(
-                      height: 1.5,
-                      fontStyle: FontStyle.italic,
-                      color: context.theme.textTheme.bodyLarge?.color
-                          ?.withValues(alpha: 0.85),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 90),
+          AppCard(child: Text(message, style: context.text.bodyMedium)),
         ],
       ),
     );
@@ -442,42 +337,21 @@ class _FounderProposalDetailsPageState
     );
   }
 
-  Widget _buildTermCard(
-    IconData icon,
-    String label,
-    String value,
-    Color color,
-  ) {
+  Widget _buildStatCard(IconData icon, String label, String value) {
     return AppCard(
       margin: EdgeInsets.zero,
-      padding: const EdgeInsets.all(AppSizes.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(AppSizes.xs),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-            ),
-            child: Icon(icon, size: 20, color: color),
-          ),
+          Icon(icon, size: 20, color: AppColors.primary),
           AppSizes.vGapSm,
           Text(
             value,
-            style: context.text.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: context.theme.textTheme.titleLarge?.color,
+            style: context.text.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: context.text.labelSmall?.copyWith(
-              color: AppColors.mutedText,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          Text(label, style: context.text.labelSmall),
         ],
       ),
     );

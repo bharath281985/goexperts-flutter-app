@@ -423,10 +423,7 @@ class DashboardCubit extends Cubit<DashboardState> {
           0,
           (total, conversation) => total + conversation.unreadCount,
         );
-        final finalUnread = unreadMessages > next.unreadMessagesCount
-            ? unreadMessages
-            : next.unreadMessagesCount;
-        next = next.copyWith(unreadMessagesCount: finalUnread);
+        next = next.copyWith(unreadMessagesCount: unreadMessages);
       });
 
       emit(next);

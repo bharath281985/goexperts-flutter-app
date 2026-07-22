@@ -198,55 +198,6 @@ class InvestorRepositoryImpl implements InvestorRepository {
   }
 
   @override
-  Future<Result<PortfolioPerformance>> getPortfolioPerformance() async {
-    if (AppConfig.useMockData || _api == null) {
-      return const Success(
-        PortfolioPerformance(
-          totalInvested: 0.0,
-          currentValue: 0.0,
-          totalRoi: 0.0,
-        ),
-      );
-    }
-    return _api.get<PortfolioPerformance>(
-      ApiEndpoints.investorPortfolioPerformance,
-      parser: (raw) =>
-          PortfolioPerformance.fromJson(Map<String, dynamic>.from(raw as Map)),
-    );
-  }
-
-  @override
-  Future<Result<Paginated<InvestmentHistoryItem>>> getInvestmentHistory(
-    QueryParams params,
-  ) async {
-    if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
-    return _api.getEnvelope<Paginated<InvestmentHistoryItem>>(
-      ApiEndpoints.investorInvestmentHistory,
-      query: params.toApiQuery(),
-      parser: (env) {
-        final rawData = env.data;
-        dynamic listRaw = rawData;
-        if (rawData is Map) {
-          listRaw =
-              rawData['investments'] ??
-              rawData['items'] ??
-              rawData['data'] ??
-              rawData;
-        }
-        return ApiResponse.parsePaginated(
-          listRaw,
-          env.meta,
-          _historyFromJson,
-          fallbackPage: params.page,
-        );
-      },
-    );
-  }
-
-  InvestmentHistoryItem _historyFromJson(Map<String, dynamic> json) =>
-      InvestmentHistoryItem.fromJson(json);
-
-  @override
   Future<Result<bool>> toggleFollow(String id) async {
     if (AppConfig.useMockData || _api == null) return _apiNotConfigured();
     return _api.postAction(

@@ -117,7 +117,6 @@ class Routes {
   static const investorDocuments = '/investor/documents';
   static const investorTransactions = '/investor/transactions';
   static const investorReports = '/investor/reports';
-  static const investorAnalytics = '/investor/analytics';
 
   // Role sub-pages — Founder
   static const founderPitchDeck = '/founder/pitch-deck';

@@ -300,8 +300,7 @@ GoRouter createRouter(AuthBloc authBloc) {
       // Founder standalone
       GoRoute(
         path: Routes.founderStartup,
-        builder: (_, s) =>
-            MyStartupStandalonePage(startupId: s.uri.queryParameters['id']),
+        builder: (_, __) => const MyStartupStandalonePage(),
       ),
       GoRoute(
         path: Routes.founderListStartup,
@@ -543,7 +542,7 @@ GoRouter createRouter(AuthBloc authBloc) {
       ),
       GoRoute(
         path: Routes.clientAnalytics,
-        builder: (_, __) => const RoleAnalyticsPage(role: UserRole.client),
+        builder: (_, __) => const ClientAnalyticsLivePage(),
       ),
 
       // Role sub-pages — Investor
@@ -571,10 +570,6 @@ GoRouter createRouter(AuthBloc authBloc) {
         path: Routes.investorReports,
         builder: (_, __) => const InvestorReportsLivePage(),
       ),
-      GoRoute(
-        path: Routes.investorAnalytics,
-        builder: (_, __) => const RoleAnalyticsPage(role: UserRole.investor),
-      ),
 
       // Role sub-pages — Founder
       GoRoute(
@@ -599,7 +594,7 @@ GoRouter createRouter(AuthBloc authBloc) {
       ),
       GoRoute(
         path: Routes.founderAnalytics,
-        builder: (_, __) => const RoleAnalyticsPage(role: UserRole.founder),
+        builder: (_, __) => const FounderAnalyticsLivePage(),
       ),
       GoRoute(
         path: '${Routes.publicFreelancer}/:id',

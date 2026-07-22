@@ -125,26 +125,23 @@ class _SettingsPageState extends State<SettingsPage> {
             AppListTile(
               title: 'Edit Profile',
               leadingIcon: Icons.person_outline_rounded,
-              onTap: () async {
+              onTap: () {
                 final role =
                     context.read<AuthBloc>().state.user?.role ??
                     UserRole.freelancer;
                 switch (role) {
                   case UserRole.investor:
-                    await context.push(Routes.investorProfile);
+                    context.push(Routes.investorProfile);
                     break;
                   case UserRole.founder:
-                    await context.push(Routes.founderProfile);
+                    context.push(Routes.founderProfile);
                     break;
                   case UserRole.client:
-                    await context.push(Routes.clientProfile);
+                    context.push(Routes.clientProfile);
                     break;
                   case UserRole.freelancer:
-                    await context.push(Routes.profileCompletion);
+                    context.push(Routes.profileCompletion);
                     break;
-                }
-                if (context.mounted) {
-                  context.read<AuthBloc>().add(const AuthProfileRefreshed());
                 }
               },
             ),
