@@ -66,7 +66,7 @@ class _PaginatedListViewState<T> extends State<PaginatedListView<T>> {
     if (widget.onLoadMore == null || !widget.hasMore) return;
     if (widget.status == ViewStatus.loadingMore) return;
     if (_controller.position.pixels >=
-        _controller.position.maxScrollExtent - 40) {
+        _controller.position.maxScrollExtent - 240) {
       widget.onLoadMore!();
     }
   }
@@ -122,10 +122,7 @@ class _PaginatedListViewState<T> extends State<PaginatedListView<T>> {
       controller: _controller,
       padding: widget.padding,
       physics: const AlwaysScrollableScrollPhysics(),
-      itemCount:
-          widget.items.length +
-          (widget.header != null ? 1 : 0) +
-          (showLoader ? 1 : 0),
+      itemCount: widget.items.length + (widget.header != null ? 1 : 0) + (showLoader ? 1 : 0),
       separatorBuilder: (_, i) {
         if (widget.header != null && i == 0) return const SizedBox.shrink();
         return widget.separator ?? AppSizes.vGapMd;
@@ -152,7 +149,8 @@ class _PaginatedListViewState<T> extends State<PaginatedListView<T>> {
       controller: _controller,
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        if (widget.header != null) SliverToBoxAdapter(child: widget.header!),
+        if (widget.header != null)
+          SliverToBoxAdapter(child: widget.header!),
         SliverPadding(
           padding: widget.padding,
           sliver: SliverGrid(
@@ -163,8 +161,7 @@ class _PaginatedListViewState<T> extends State<PaginatedListView<T>> {
               childAspectRatio: 0.82,
             ),
             delegate: SliverChildBuilderDelegate(
-              (context, index) =>
-                  widget.itemBuilder(context, widget.items[index], index),
+              (context, index) => widget.itemBuilder(context, widget.items[index], index),
               childCount: widget.items.length,
             ),
           ),

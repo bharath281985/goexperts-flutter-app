@@ -26,37 +26,19 @@ class InvestorsListView extends StatelessWidget {
         FilterSection(
           key: 'industry',
           title: 'Industries',
-          options: const [
-            'FinTech',
-            'SaaS',
-            'AI',
-            'HealthTech',
-            'EdTech',
-            'CleanTech',
-            'Manufacturing',
-            'AgriTech',
-            'E-Commerce',
-          ],
+          options: const ['FinTech', 'SaaS', 'AI', 'HealthTech', 'EdTech', 'CleanTech', 'Manufacturing', 'AgriTech', 'E-Commerce'],
         ),
         FilterSection(
           key: 'partnerRole',
           title: 'Partner Role',
-          options: const [
-            'Working Partner',
-            'Sleeping Partner',
-            'Strategic Partner',
-            'Mentor Investor',
-          ],
+          options: const ['Working Partner', 'Sleeping Partner', 'Strategic Partner', 'Mentor Investor'],
         ),
       ],
       itemBuilder: (context, i, _) => AppInvestorCard(
         investor: i,
         onTap: () => context.push('${Routes.publicInvestor}/${i.id}'),
-        onFollow: () => context.showSnack(
-          i.isFollowing ? 'Unfollowed' : 'Following ${i.name}',
-        ),
-        onConnect: () =>
-            context.showSnack('Connection request sent to ${i.name}'),
+        onFollow: () => context.showSnack(i.isFollowing ? 'Unfollowed' : 'Following ${i.name}'),
+        onConnect: () => context.showSnack('Connection request sent to ${i.name}'),
       ),
     );
   }

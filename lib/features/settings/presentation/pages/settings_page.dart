@@ -7,10 +7,10 @@ import '../../../../app/locale/locale_cubit.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/theme_cubit.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/utils/enums.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_list_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
-import '../../../../core/utils/enums.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../domain/repositories/settings_repository.dart';
 

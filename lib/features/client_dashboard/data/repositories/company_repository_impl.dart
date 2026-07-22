@@ -21,17 +21,14 @@ class CompanyRepositoryImpl implements CompanyRepository {
       MockData.companies,
       params,
       searchMatcher: (c, q) =>
-          c.name.toLowerCase().contains(q) ||
-          c.industry.toLowerCase().contains(q),
+          c.name.toLowerCase().contains(q) || c.industry.toLowerCase().contains(q),
     );
   }
 
   @override
   Future<Result<Company>> getCompany(String id) {
-    final c = MockData.companies.firstWhere(
-      (e) => e.id == id,
-      orElse: () => MockData.companies.first,
-    );
+    final c = MockData.companies.firstWhere((e) => e.id == id,
+        orElse: () => MockData.companies.first);
     return MockUtils.single(c);
   }
 
@@ -50,22 +47,9 @@ class CompanyRepositoryImpl implements CompanyRepository {
   }
 
   @override
-  Future<Result<Company>> updateClientProfile(
-    Map<String, dynamic> data, {
-    String? logoPath,
-  }) async {
+  Future<Result<Company>> updateClientProfile(Map<String, dynamic> data) async {
     if (AppConfig.useMockData || _api == null) {
       return _apiNotConfigured();
-    }
-    if (logoPath != null && _uploader != null) {
-      final uploadRes = await _uploader.upload(
-        path: logoPath,
-        endpoint: ApiEndpoints.clientProfile,
-        fileField: 'file',
-        method: 'put',
-        fields: data,
-      );
-      return uploadRes.fold(Err.new, (json) => Success(_fromJson(json)));
     }
     return _api.put<Company>(
       ApiEndpoints.clientProfile,
@@ -103,33 +87,25 @@ class CompanyRepositoryImpl implements CompanyRepository {
   }
 
   Company _fromJson(Map<String, dynamic> json) => Company(
-    id: json['id']?.toString() ?? 'company',
-    name:
-        json['name'] as String? ??
-        json['companyName'] as String? ??
-        json['company'] as String? ??
-        'Company',
-    industry: json['industry'] as String? ?? 'General',
-    location:
-        json['location'] as String? ?? json['address'] as String? ?? 'N/A',
-    ownerName: json['ownerName'] as String? ?? '',
-    logoUrl:
-        json['logoUrl'] as String? ??
-        json['logo'] as String? ??
-        json['avatarUrl'] as String?,
-    coverUrl: json['coverUrl'] as String?,
-    description: json['description'] as String? ?? '',
-    website: json['website'] as String?,
-    teamSize: json['teamSize']?.toString() ?? '1-10',
-    isVerified: json['isVerified'] as bool? ?? false,
-    projectsPosted: (json['projectsPosted'] as num?)?.toInt() ?? 0,
-    hiresCount: (json['hiresCount'] as num?)?.toInt() ?? 0,
-    rating: (json['rating'] as num?)?.toDouble() ?? 0,
-    isFollowing: json['isFollowing'] as bool? ?? false,
-    isSaved: json['isSaved'] as bool? ?? false,
-    gst: json['gst'] as String? ?? '',
-    pan: json['pan'] as String? ?? '',
-  );
+        id: json['id']?.toString() ?? 'company',
+        name: json['name'] as String? ?? json['companyName'] as String? ?? 'Company',
+        industry: json['industry'] as String? ?? 'General',
+        location: json['location'] as String? ?? json['address'] as String? ?? 'N/A',
+        ownerName: json['ownerName'] as String? ?? '',
+        logoUrl: json['logoUrl'] as String? ?? json['logo'] as String?,
+        coverUrl: json['coverUrl'] as String?,
+        description: json['description'] as String? ?? '',
+        website: json['website'] as String?,
+        teamSize: json['teamSize']?.toString() ?? '1-10',
+        isVerified: json['isVerified'] as bool? ?? false,
+        projectsPosted: (json['projectsPosted'] as num?)?.toInt() ?? 0,
+        hiresCount: (json['hiresCount'] as num?)?.toInt() ?? 0,
+        rating: (json['rating'] as num?)?.toDouble() ?? 0,
+        isFollowing: json['isFollowing'] as bool? ?? false,
+        isSaved: json['isSaved'] as bool? ?? false,
+        gst: json['gst'] as String? ?? '',
+        pan: json['pan'] as String? ?? '',
+      );
 
   Future<Result<T>> _apiNotConfigured<T>() async =>
       const Err(ServerFailure('Live API client is not configured.'));

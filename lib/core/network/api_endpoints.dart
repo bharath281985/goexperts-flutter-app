@@ -33,11 +33,6 @@ class ApiEndpoints {
   static const publicTestimonials = '/public/testimonials';
   static const publicSearch = '/public/search';
 
-  static String publicFreelancer(String id) => '/public/freelancers/$id';
-  static String publicClient(String id) => '/public/clients/$id';
-  static String publicInvestor(String id) => '/public/investors/$id';
-  static String publicStartup(String id) => '/public/startups/$id';
-
   // ── Shared ────────────────────────────────────────────────────────────────
   static const notifications = '/notifications';
   static const notificationsUnreadCount = '/notifications/unread-count';
@@ -244,6 +239,7 @@ class ApiEndpoints {
   static const clientInvoices = '/client/invoices';
   static const clientWallet = '/client/wallet';
   static const clientWalletTransactions = '/client/wallet/transactions';
+  static const clientWalletWithdraw = '/client/wallet/withdraw';
   static const clientReviews = '/client/reviews';
   static const clientAnalytics = '/client/analytics';
   static const clientTeam = '/client/team';
@@ -260,7 +256,6 @@ class ApiEndpoints {
   static const investorStartupsRecommended = '/investor/startups/recommended';
   static const investorStartupsTrending = '/investor/startups/trending';
   static String investorStartupSave(String id) => '/investor/startups/$id/save';
-  static String investorFounderSave(String id) => '/investor/founders/$id/save';
   static const investorWatchlist = '/investor/watchlist';
   static String investorWatchlistItem(String id) => '/investor/watchlist/$id';
   static String investorWatchlistNotes(String id) =>
@@ -291,16 +286,13 @@ class ApiEndpoints {
   static const investorReportsPortfolio = '/investor/reports/portfolio';
   static const investorReportsRoi = '/investor/reports/roi';
   static const investorAnalytics = '/investor/analytics';
-  static const investorWallet = '/investor/wallet';
-  static const investorWalletTransactions = '/investor/wallet/transactions';
-  static const investorWalletWithdraw = '/investor/wallet/withdraw';
 
   // ── Founder ───────────────────────────────────────────────────────────────
   static const founderIdeas = '/founder/ideas';
   static const founderDashboard = '/founder/dashboard';
   // Founder personal profile uses the startup profile endpoints on the API.
   static const founderProfile = '/founder/profile';
-  static const founderStartup = '/founder/ideas';
+  static const founderStartup = '/founder/startup';
   static const founderFunding = '/founder/funding';
   static String founderFundingById(String id) => '/founder/funding/$id';
   static String founderFundingStatus(String id) =>
@@ -336,11 +328,6 @@ class ApiEndpoints {
   static const founderInvoices = '/founder/invoices';
   static const founderSubscriptionsCurrent = '/founder/subscriptions/current';
   static const founderSubscriptionsPlans = '/founder/subscriptions/plans';
-  static String founderProposal(String id) => '/founder/proposals/$id';
-  static String founderProposalAccept(String id) =>
-      '/founder/proposals/$id/accept';
-  static String founderProposalReject(String id) =>
-      '/founder/proposals/$id/reject';
 
   // ── Legacy aliases (kept for gradual migration) ─────────────────────────────
   static const signup = register;
@@ -354,6 +341,8 @@ class ApiEndpoints {
   static const messages = '/messages';
   static const conversations = '/conversations';
   static const meetings = '/meetings';
+  static const investorWalletWithdraw = '/investor/wallet/withdraw';
+  static const walletWithdraw = '/wallet/withdraw';
   static const transactions = '/wallet/transactions';
   static const subscriptions = '/subscriptions';
   static const bookmarks = '/favorites';

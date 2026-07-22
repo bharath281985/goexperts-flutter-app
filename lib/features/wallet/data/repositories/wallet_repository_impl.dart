@@ -29,8 +29,6 @@ class WalletRepositoryImpl implements WalletRepository {
         ? ApiEndpoints.clientWallet
         : role == UserRole.founder
         ? ApiEndpoints.founderWallet
-        : role == UserRole.investor
-        ? ApiEndpoints.investorWallet
         : ApiEndpoints.wallet;
 
     final result = await _api.get<WalletSummary>(
@@ -62,8 +60,6 @@ class WalletRepositoryImpl implements WalletRepository {
         ? ApiEndpoints.clientWalletTransactions
         : role == UserRole.founder
         ? '${ApiEndpoints.founderWallet}/transactions'
-        : role == UserRole.investor
-        ? ApiEndpoints.investorWalletTransactions
         : ApiEndpoints.walletTransactions;
 
     final result = await _api.getEnvelope<Paginated<WalletTransaction>>(
@@ -148,12 +144,13 @@ class WalletRepositoryImpl implements WalletRepository {
     final role = await _role();
     final path = role == UserRole.freelancer
         ? ApiEndpoints.freelancerWalletWithdraw
+        : role == UserRole.client
+        ? ApiEndpoints.clientWalletWithdraw
         : role == UserRole.founder
         ? ApiEndpoints.founderWalletWithdraw
         : role == UserRole.investor
         ? ApiEndpoints.investorWalletWithdraw
-        : ApiEndpoints.freelancerWalletWithdraw;
-
+        : ApiEndpoints.walletWithdraw;
     return _api.postEnvelopeAcceptingHttpSuccess<String>(
       path,
       body: {
