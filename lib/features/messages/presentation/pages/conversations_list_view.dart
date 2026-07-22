@@ -18,7 +18,14 @@ import '../widgets/conversation_tile.dart';
 
 /// Messages list backed by the live conversations API.
 class ConversationsListView extends StatefulWidget {
-  const ConversationsListView({super.key});
+  const ConversationsListView({
+    super.key,
+    this.refreshToken = 0,
+    this.onRefreshed,
+  });
+
+  final int refreshToken;
+  final Future<void> Function()? onRefreshed;
 
   @override
   State<ConversationsListView> createState() => _ConversationsListViewState();
@@ -31,11 +38,20 @@ class _ConversationsListViewState extends State<ConversationsListView> {
   List<Conversation> _items = const [];
   ViewStatus _status = ViewStatus.initial;
   String? _error;
+  int _refreshEpoch = 0;
 
   @override
   void initState() {
     super.initState();
     _bootstrap();
+  }
+
+  @override
+  void didUpdateWidget(covariant ConversationsListView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.refreshToken != oldWidget.refreshToken) {
+      _refresh();
+    }
   }
 
   @override
@@ -49,13 +65,14 @@ class _ConversationsListViewState extends State<ConversationsListView> {
   }
 
   Future<void> _refresh({bool showLoading = false}) async {
+    final epoch = ++_refreshEpoch;
     if (showLoading) {
       setState(() => _status = ViewStatus.loading);
     } else {
       setState(() => _status = ViewStatus.refreshing);
     }
     final result = await _repo.getConversations(const QueryParams(page: 1));
-    if (!mounted) return;
+    if (!mounted || epoch != _refreshEpoch) return;
     result.fold(
       (f) {
         setState(() {
@@ -74,6 +91,9 @@ class _ConversationsListViewState extends State<ConversationsListView> {
         });
       },
     );
+    if (result.isSuccess) {
+      await widget.onRefreshed?.call();
+    }
   }
 
   List<Conversation> get _filtered {
@@ -113,16 +133,14 @@ class _ConversationsListViewState extends State<ConversationsListView> {
           isDestructive: true,
           onTap: () async {
             final res = await _repo.deleteConversation(c.id);
-            res.fold(
-              (f) => context.showSnack(f.message, isError: true),
-              (_) {
-                setState(() {
-                  _items = _items.where((e) => e.id != c.id).toList();
-                  _status =
-                      _items.isEmpty ? ViewStatus.empty : ViewStatus.success;
-                });
-              },
-            );
+            res.fold((f) => context.showSnack(f.message, isError: true), (_) {
+              setState(() {
+                _items = _items.where((e) => e.id != c.id).toList();
+                _status = _items.isEmpty
+                    ? ViewStatus.empty
+                    : ViewStatus.success;
+              });
+            });
           },
         ),
       ],
@@ -157,7 +175,10 @@ class _ConversationsListViewState extends State<ConversationsListView> {
       return const AppLoadingShimmer(itemCount: 8, height: 72);
     }
     if (_status == ViewStatus.failure && items.isEmpty) {
-      return AppErrorState(message: _error, onRetry: () => _refresh(showLoading: true));
+      return AppErrorState(
+        message: _error,
+        onRetry: () => _refresh(showLoading: true),
+      );
     }
     if (_status == ViewStatus.empty || items.isEmpty) {
       return RefreshIndicator(
@@ -185,7 +206,14 @@ class _ConversationsListViewState extends State<ConversationsListView> {
           final c = items[i];
           return ConversationTile(
             conversation: c,
-            onTap: () => context.push('${Routes.chat}/${c.id}', extra: c),
+            onTap: () async {
+              await context.push('${Routes.chat}/${c.id}', extra: c);
+              if (!context.mounted) return;
+              await _refresh();
+              await Future<void>.delayed(const Duration(milliseconds: 900));
+              if (!mounted) return;
+              await _refresh();
+            },
             onLongPress: () => _onLongPress(c),
           );
         },

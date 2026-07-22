@@ -321,15 +321,6 @@ class _CategorySkillsPickerState extends State<CategorySkillsPicker> {
       children: [
         AppSizes.vGapLg,
         _buildSectionTitle(widget.skillsLabel, subtitle: widget.skillsSubtitle),
-        if (widget.selectedSkillIds.isNotEmpty) ...[
-          AppSizes.vGapSm,
-          Text(
-            context
-                .tr('{count} selected')
-                .replaceFirst('{count}', '${widget.selectedSkillIds.length}'),
-            style: context.text.bodySmall?.copyWith(color: AppColors.primary),
-          ),
-        ],
         if (widget.skillsError != null) ...[
           AppSizes.vGapSm,
           Text(

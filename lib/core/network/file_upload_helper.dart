@@ -22,7 +22,6 @@ class FileUploadHelper {
     required String path,
     required String endpoint,
     String fileField = 'file',
-    String method = 'post',
     Map<String, dynamic>? fields,
     void Function(int sent, int total)? onProgress,
   }) async {
@@ -45,28 +44,16 @@ class FileUploadHelper {
           ),
         });
 
-        final usePut = method.toLowerCase() == 'put';
-        final response = usePut
-            ? await _dioClient.raw.put<Map<String, dynamic>>(
-                endpoint,
-                data: formData,
-                options: Options(
-                  contentType: 'multipart/form-data',
-                  sendTimeout: const Duration(minutes: 5),
-                  receiveTimeout: const Duration(minutes: 5),
-                ),
-                onSendProgress: onProgress,
-              )
-            : await _dioClient.raw.post<Map<String, dynamic>>(
-                endpoint,
-                data: formData,
-                options: Options(
-                  contentType: 'multipart/form-data',
-                  sendTimeout: const Duration(minutes: 5),
-                  receiveTimeout: const Duration(minutes: 5),
-                ),
-                onSendProgress: onProgress,
-              );
+        final response = await _dioClient.raw.post<Map<String, dynamic>>(
+          endpoint,
+          data: formData,
+          options: Options(
+            contentType: 'multipart/form-data',
+            sendTimeout: const Duration(minutes: 5),
+            receiveTimeout: const Duration(minutes: 5),
+          ),
+          onSendProgress: onProgress,
+        );
 
         final envelope = ApiResponse.parse(
           response.data ?? {},
@@ -80,8 +67,7 @@ class FileUploadHelper {
         return Success(<String, dynamic>{'url': envelope.message});
       } on DioException catch (e) {
         lastError = e;
-        final retryable =
-            e.type == DioExceptionType.connectionTimeout ||
+        final retryable = e.type == DioExceptionType.connectionTimeout ||
             e.type == DioExceptionType.receiveTimeout ||
             e.type == DioExceptionType.sendTimeout ||
             e.type == DioExceptionType.connectionError ||
@@ -98,7 +84,6 @@ class FileUploadHelper {
     required String path,
     required String endpoint,
     String fileField = 'file',
-    String method = 'post',
     Map<String, dynamic>? fields,
     void Function(int sent, int total)? onProgress,
   }) async {
@@ -106,7 +91,6 @@ class FileUploadHelper {
       path: path,
       endpoint: endpoint,
       fileField: fileField,
-      method: method,
       fields: fields,
       onProgress: onProgress,
     );
@@ -116,7 +100,6 @@ class FileUploadHelper {
         json['url']?.toString() ??
             json['fileUrl']?.toString() ??
             json['avatarUrl']?.toString() ??
-            json['logoUrl']?.toString() ??
             '',
       ),
     );

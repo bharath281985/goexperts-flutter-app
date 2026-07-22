@@ -186,8 +186,7 @@ class _ChatViewState extends State<_ChatView> {
                   label: 'Mark as Unread',
                   icon: Icons.mark_email_unread_outlined,
                   onTap: () async {
-                    await sl<MessageRepository>()
-                        .markConversationUnread(
+                    await sl<MessageRepository>().markConversationUnread(
                       context.read<ChatCubit>().conversationId,
                     );
                     if (context.mounted) {
@@ -282,12 +281,8 @@ class _ChatViewState extends State<_ChatView> {
 }
 
 class _ChatRow {
-  _ChatRow.date(this.dateLabel)
-      : message = null,
-        isDate = true;
-  _ChatRow.message(this.message)
-      : dateLabel = null,
-        isDate = false;
+  _ChatRow.date(this.dateLabel) : message = null, isDate = true;
+  _ChatRow.message(this.message) : dateLabel = null, isDate = false;
 
   final bool isDate;
   final String? dateLabel;
@@ -369,7 +364,9 @@ class _Bubble extends StatelessWidget {
                   child: Text(
                     message.text,
                     style: TextStyle(
-                      color: mine ? Colors.white : context.text.bodyMedium?.color,
+                      color: mine
+                          ? Colors.white
+                          : context.text.bodyMedium?.color,
                     ),
                   ),
                 ),
@@ -433,7 +430,8 @@ class _AttachmentPreview extends StatelessWidget {
       );
     }
     return InkWell(
-      onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      onTap: () =>
+          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
       child: _fileChip(context, label),
     );
   }
@@ -526,7 +524,11 @@ class _InputBar extends StatelessWidget {
                 onTap: onSend,
                 child: const Padding(
                   padding: EdgeInsets.all(12),
-                  child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                  child: Icon(
+                    Icons.send_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             ),

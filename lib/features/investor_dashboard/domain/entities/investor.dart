@@ -77,7 +77,8 @@ class Investor extends Equatable {
 
     final id = (json['id']?.toString() ?? '');
     final profileId =
-        (profile?['id']?.toString() ?? json['investorId']?.toString() ?? '');
+        (profile?['id']?.toString() ?? json['investorId']?.toString() ?? '')
+            ;
     final name =
         json['fullName']?.toString() ?? json['name']?.toString() ?? 'Investor';
     final bio = json['bio']?.toString() ?? '';
@@ -169,7 +170,6 @@ class Deal extends Equatable {
     this.startupLogo,
     this.hasNda = false,
     this.documentsCount = 0,
-    this.founderId,
   });
 
   final String id;
@@ -183,10 +183,9 @@ class Deal extends Equatable {
   final String? startupLogo;
   final bool hasNda;
   final int documentsCount;
-  final String? founderId;
 
   @override
-  List<Object?> get props => [id, status, founderId];
+  List<Object?> get props => [id, status];
 }
 
 /// A holding in the investor's portfolio.

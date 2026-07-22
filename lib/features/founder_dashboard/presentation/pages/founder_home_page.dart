@@ -152,7 +152,7 @@ class _FundingCard extends StatelessWidget {
                       color: AppColors.success,
                     ),
                   ),
-                  Text('Raised', style: context.text.labelSmall),
+                  Text(context.tr('Raised'), style: context.text.labelSmall),
                 ],
               ),
               Column(
@@ -162,7 +162,7 @@ class _FundingCard extends StatelessWidget {
                     Formatters.compactCurrency(goal),
                     style: context.text.titleMedium,
                   ),
-                  Text('Goal', style: context.text.labelSmall),
+                  Text(context.tr('Goal'), style: context.text.labelSmall),
                 ],
               ),
             ],

@@ -104,18 +104,12 @@ class InvestorRepositoryImpl implements InvestorRepository {
               'Founder';
           final stage =
               profile?['stage']?.toString() ?? su['stage']?.toString() ?? 'MVP';
-          final founderId =
-              profile?['id']?.toString() ??
-              su['founderId']?.toString() ??
-              su['userId']?.toString() ??
-              '';
 
           startupDetailsCache[startupId] = {
             'name': name,
             'logo': avatar ?? '',
             'founder': founder,
             'stage': stage,
-            'founderId': founderId,
           };
         });
       }
@@ -127,7 +121,6 @@ class InvestorRepositoryImpl implements InvestorRepository {
             'logo': '',
             'founder': 'Founder',
             'stage': 'MVP',
-            'founderId': '',
           };
 
       deals.add(
@@ -152,9 +145,6 @@ class InvestorRepositoryImpl implements InvestorRepository {
               : null,
           hasNda: raw['hasNda'] as bool? ?? false,
           documentsCount: (raw['documentsCount'] as num?)?.toInt() ?? 0,
-          founderId: cached['founderId']?.isNotEmpty == true
-              ? cached['founderId']
-              : null,
         ),
       );
     }

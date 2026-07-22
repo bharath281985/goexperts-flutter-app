@@ -61,49 +61,9 @@ class ApiResponse<T> {
     int fallbackPage = 1,
   }) {
     final items = parseList(raw, itemParser);
-
-    // Parse current page supporting various formats
-    final page =
-        meta?['page'] as int? ??
-        meta?['currentPage'] as int? ??
-        meta?['current_page'] as int? ??
-        fallbackPage;
-
-    // Parse page size / limit supporting various formats
-    final limit =
-        meta?['limit'] as int? ??
-        meta?['pageSize'] as int? ??
-        meta?['page_size'] as int? ??
-        15;
-
-    // Parse total pages supporting various formats
-    int totalPages =
-        meta?['totalPages'] as int? ??
-        meta?['total_pages'] as int? ??
-        meta?['lastPage'] as int? ??
-        meta?['last_page'] as int? ??
-        meta?['pageCount'] as int? ??
-        meta?['page_count'] as int? ??
-        1;
-
-    // Parse total count supporting various formats
-    final total =
-        meta?['total'] as int? ??
-        meta?['totalCount'] as int? ??
-        meta?['total_count'] as int? ??
-        meta?['totalItems'] as int? ??
-        meta?['total_items'] as int? ??
-        meta?['count'] as int? ??
-        items.length;
-
-    // Fallback: If totalPages is not explicitly set (or equals 1) but we fetched
-    // a full page of items, there is likely a next page. Enable scroll pagination.
-    if (totalPages <= page &&
-        items.isNotEmpty &&
-        (items.length >= limit || items.length >= 10)) {
-      totalPages = page + 1;
-    }
-
+    final page = meta?['page'] as int? ?? fallbackPage;
+    final totalPages = meta?['totalPages'] as int? ?? 1;
+    final total = meta?['total'] as int? ?? items.length;
     return Paginated(
       items: items,
       page: page,

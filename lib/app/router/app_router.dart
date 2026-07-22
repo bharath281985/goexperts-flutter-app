@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/dashboard/role_shell.dart';
@@ -43,7 +42,6 @@ import '../../features/investor_dashboard/presentation/pages/investor_subpages.d
 import '../../features/investor_dashboard/presentation/pages/investor_live_pages.dart';
 import '../../features/founder_dashboard/presentation/pages/founder_subpages.dart';
 import '../../features/founder_dashboard/presentation/pages/founder_live_pages.dart';
-import '../../features/founder_dashboard/presentation/pages/founder_proposal_details_page.dart';
 import '../../features/client_dashboard/presentation/pages/create_project_page.dart';
 import '../../features/meetings/presentation/pages/meeting_details_page.dart';
 import '../../features/messages/domain/entities/conversation.dart';
@@ -51,6 +49,7 @@ import '../../features/messages/presentation/pages/chat_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/onboarding/presentation/pages/onboarding_page.dart';
 import '../../features/profile/presentation/pages/public_profile_page.dart';
+import '../../features/profile/presentation/pages/role_profile_edit_pages.dart';
 import '../../features/projects/presentation/pages/project_details_page.dart';
 import '../../features/proposals/presentation/pages/proposal_details_page.dart';
 import '../../features/role_selection/presentation/pages/role_selection_page.dart';
@@ -196,7 +195,9 @@ GoRouter createRouter(AuthBloc authBloc) {
       ),
       GoRoute(
         path: Routes.resetPassword,
-        builder: (_, __) => const ResetPasswordPage(),
+        builder: (_, s) => ResetPasswordPage(
+          email: (s.extra as String?) ?? s.uri.queryParameters['email'] ?? '',
+        ),
       ),
       GoRoute(
         path: Routes.authSuccess,
@@ -249,7 +250,7 @@ GoRouter createRouter(AuthBloc authBloc) {
       ),
       GoRoute(
         path: Routes.freelancerProfile,
-        builder: (_, __) => const ProfileStandalonePage(),
+        builder: (_, __) => const FreelancerEditProfilePage(),
       ),
       GoRoute(
         path: Routes.freelancerWallet,
@@ -276,7 +277,7 @@ GoRouter createRouter(AuthBloc authBloc) {
       ),
       GoRoute(
         path: Routes.clientProfile,
-        builder: (_, __) => const ClientCompanyProfilePage(),
+        builder: (_, __) => const ClientEditProfilePage(),
       ),
 
       // Investor standalone
@@ -397,15 +398,7 @@ GoRouter createRouter(AuthBloc authBloc) {
       ),
       GoRoute(
         path: '${Routes.proposalDetails}/:id',
-        builder: (context, s) {
-          final id = s.pathParameters['id']!;
-          final isFounder =
-              context.read<AuthBloc>().state.user?.role == UserRole.founder;
-          if (isFounder) {
-            return FounderProposalDetailsPage(id: id);
-          }
-          return ProposalDetailsPage(id: id);
-        },
+        builder: (_, s) => ProposalDetailsPage(id: s.pathParameters['id']!),
       ),
       GoRoute(
         path: '${Routes.meetingDetails}/:id',

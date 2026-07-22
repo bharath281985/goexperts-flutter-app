@@ -108,62 +108,55 @@ class Startup extends Equatable {
   );
 
   factory Startup.fromApiJson(Map<String, dynamic> json) {
-    final dynamic founderField =
-        json['founderProfile'] ?? json['founder_profile'] ?? json['founder'];
-    final Map<String, dynamic>? profile = (founderField is Map)
-        ? Map<String, dynamic>.from(founderField)
-        : null;
-
-    final String? explicitFounderId = (founderField is String)
-        ? founderField
+    final Map<String, dynamic>? profile =
+        (json['founderProfile'] ?? json['founder_profile']) != null
+        ? Map<String, dynamic>.from(
+            (json['founderProfile'] ?? json['founder_profile']) as Map,
+          )
         : null;
 
     final id = json['id']?.toString() ?? '';
-    print("Startup fromApiJson JSON payload: $json");
 
     final name =
+        profile?['startupName']?.toString() ??
         json['startup']?.toString() ??
         json['name']?.toString() ??
-        profile?['startupName']?.toString() ??
         json['fullName']?.toString() ??
         'Startup';
     final tagline =
-        json['tagline']?.toString() ??
         profile?['tagline']?.toString() ??
+        json['tagline']?.toString() ??
         json['bio']?.toString() ??
         '';
     final industry =
-        json['industry']?.toString() ??
         profile?['industry']?.toString() ??
+        json['industry']?.toString() ??
         'General';
     final stage =
-        json['stage']?.toString() ?? profile?['stage']?.toString() ?? 'MVP';
+        profile?['stage']?.toString() ?? json['stage']?.toString() ?? 'MVP';
     final founderName =
-        json['founderName']?.toString() ??
-        profile?['fullName']?.toString() ??
-        profile?['name']?.toString() ??
         json['fullName']?.toString() ??
+        json['founderName']?.toString() ??
         'Founder';
 
     final fundingRequired =
-        (json['fundingRequired'] as num?)?.toDouble() ??
-        (json['funding'] as num?)?.toDouble() ??
         (profile?['raised'] as num?)?.toDouble() ??
         (profile?['fundingRequired'] as num?)?.toDouble() ??
+        (json['fundingRequired'] as num?)?.toDouble() ??
+        (json['funding'] as num?)?.toDouble() ??
         0.0;
 
     final equityOffered =
+        (profile?['equityOffered'] as num?)?.toDouble() ??
         (json['equityOffered'] as num?)?.toDouble() ??
         (json['equity'] as num?)?.toDouble() ??
-        (profile?['equityOffered'] as num?)?.toDouble() ??
         0.0;
 
-    final city = json['city'] as String? ?? profile?['city'] as String?;
-    final country =
-        json['country'] as String? ?? profile?['country'] as String?;
+    final city = json['city'] as String?;
+    final country = json['country'] as String?;
     String location =
-        json['location'] as String? ?? profile?['location'] as String? ?? 'N/A';
-    if (json['location'] == null && profile?['location'] == null) {
+        profile?['location'] as String? ?? json['location'] as String? ?? 'N/A';
+    if (profile?['location'] == null && json['location'] == null) {
       if (city != null && country != null) {
         location = '$city, $country';
       } else if (city != null) {
@@ -174,18 +167,18 @@ class Startup extends Equatable {
     }
 
     final logoUrl =
+        json['avatarUrl'] as String? ??
         json['logoUrl'] as String? ??
         json['logo'] as String? ??
-        json['avatarUrl'] as String? ??
         profile?['logoUrl'] as String?;
     final coverUrl =
         json['coverUrl'] as String? ??
         json['coverimage'] as String? ??
         profile?['coverUrl'] as String?;
     final founderAvatar =
-        profile?['avatarUrl'] as String? ??
-        json['founderAvatar'] as String? ??
         json['avatarUrl'] as String? ??
+        json['founderAvatar'] as String? ??
+        json['logo'] as String? ??
         profile?['founderAvatar'] as String?;
 
     bool toBool(dynamic val) {
@@ -209,11 +202,7 @@ class Startup extends Equatable {
       fundingRequired: fundingRequired,
       equityOffered: equityOffered,
       location: location,
-      founderId:
-          json['founderId']?.toString() ??
-          explicitFounderId ??
-          profile?['id']?.toString() ??
-          '',
+      founderId: profile?['id']?.toString(),
       logoUrl: logoUrl,
       coverUrl: coverUrl,
       founderAvatar: founderAvatar,
@@ -234,35 +223,32 @@ class Startup extends Equatable {
           json['marketSize'] as String? ??
           '',
       valuation:
-          (json['valuation'] as num?)?.toDouble() ??
           (profile?['valuation'] as num?)?.toDouble() ??
           (profile?['raised'] as num?)?.toDouble() ??
+          (json['valuation'] as num?)?.toDouble() ??
           0.0,
       fundingRaised:
-          (json['fundingRaised'] as num?)?.toDouble() ??
           (profile?['fundingRaised'] as num?)?.toDouble() ??
           (profile?['raised'] as num?)?.toDouble() ??
+          (json['fundingRaised'] as num?)?.toDouble() ??
           0.0,
       pitchDeckUrl:
-          json['pitchDeck'] as String? ??
-          json['pitchDeckUrl'] as String? ??
-          json['pitchDisk'] as String? ??
           profile?['pitchDeckUrl'] as String? ??
-          profile?['pitchDisk'] as String?,
+          json['pitchDeckUrl'] as String? ??
+          profile?['pitchDisk'] as String? ??
+          json['pitchDisk'] as String?,
       businessPlanUrl:
-          json['businessPlan'] as String? ??
-          json['businessPlanUrl'] as String? ??
-          json['Businessplan'] as String? ??
           profile?['businessPlanUrl'] as String? ??
-          profile?['Businessplan'] as String?,
+          json['businessPlanUrl'] as String? ??
+          profile?['Businessplan'] as String? ??
+          json['Businessplan'] as String?,
       views:
-          (json['views'] as num?)?.toInt() ??
           (profile?['views'] as num?)?.toInt() ??
+          (json['views'] as num?)?.toInt() ??
           0,
       investorInterests:
-          (json['interestedInvestors'] as num?)?.toInt() ??
-          (json['investorInterests'] as num?)?.toInt() ??
           (profile?['investorInterests'] as num?)?.toInt() ??
+          (json['investorInterests'] as num?)?.toInt() ??
           0,
       isSaved:
           toBool(json['isSaved']) ||
